@@ -58,6 +58,7 @@ h2 { font-size: 1.05rem; font-weight: 700; letter-spacing: -0.01em; }
 .shell { display: grid; grid-template-columns: 216px minmax(0, 1fr); gap: 28px; max-width: 1240px; margin: 0 auto; }
 .side { position: sticky; top: env(safe-area-inset-top, 0px); align-self: start; display: flex; flex-direction: column; gap: 24px; padding-top: 4px; }
 .brand { display: flex; align-items: center; gap: 10px; font-family: var(--font-mono); font-weight: 700; font-size: 0.98rem; letter-spacing: -0.02em; }
+.brand[data-act] { cursor: pointer; border-radius: 8px; }
 .brand i { width: 10px; height: 20px; background: var(--accent); box-shadow: 0 0 14px var(--accent); animation: blink 1.4s steps(2, jump-none) infinite; }
 .brand small { display: block; font-weight: 400; color: var(--muted); font-size: 0.7rem; letter-spacing: 0.04em; }
 @keyframes blink { 50% { opacity: 0.25; } }
@@ -229,10 +230,11 @@ html, body, main, #gate, .sheet, textarea { scrollbar-width: none; -ms-overflow-
 .tblwrap::-webkit-scrollbar-thumb { background: var(--line); border-radius: 8px; }
 @media (min-width: 821px) {
   html, body { height: 100%; overflow: hidden; }
-  .shell { height: calc(100vh - 40px); height: calc(100dvh - 40px); }
+  body { padding-block: 56px 28px; }
+  .shell { height: calc(100vh - 84px); height: calc(100dvh - 84px); }
   .side { position: static; }
   main { height: 100%; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 24px; }
-  #gate { min-height: 0; height: calc(100vh - 40px); height: calc(100dvh - 40px); overflow-y: auto; }
+  #gate { min-height: 0; height: calc(100vh - 84px); height: calc(100dvh - 84px); overflow-y: auto; }
 }
 
 /* TELA DE ENTRADA */
@@ -380,7 +382,7 @@ button.pc:hover { border-color: var(--accent); }
 
 <div class="shell">
   <aside class="side">
-    <div class="brand"><i></i><div>TimeTracker<small>Study Planner</small></div></div>
+    <div class="brand" role="button" tabindex="0" data-act="home" title="Ir para o início"><i></i><div>TimeTracker<small>Study Planner</small></div></div>
     <button class="menubtn" id="menuBtn" data-act="menu" aria-label="Menu" aria-expanded="false" aria-controls="nav"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
     <nav class="nav" id="nav" aria-label="Seções"></nav>
   </aside>
@@ -844,8 +846,7 @@ function viewHoje() {
   const t = today(), i = info(t), d = parse(t);
   const dateTxt = `${WD[d.getDay()]}, ${d.getDate()} de ${MON[d.getMonth()]} de ${d.getFullYear()}`;
   const C = 2 * Math.PI * 112;
-  return `<div class="pagehead"><div><p class="eyebrow">Hoje</p><h1>${dateTxt}</h1></div>
-    ${window.ttStore ? '' : '<div class="row"><button class="btn ghost sm" data-act="data">Dados</button></div>'}</div>
+  return `<div class="pagehead"><div><p class="eyebrow">Hoje</p><h1>${dateTxt}</h1></div></div>
   ${!storageOK ? '<p class="warnbar">O navegador bloqueou o armazenamento. Seus registros valem só até fechar esta página.</p>' : ''}
   <div class="today">
     <section class="card timer" aria-label="Cronômetro">
@@ -1322,7 +1323,7 @@ function accountModal(msg) {
   }
   const isIn = auth.tab === 'in';
   const g = $('#gate'); closeModal();
-  g.innerHTML = `<div class="brand"><i></i><div>TimeTracker<small>Study Planner</small></div></div>
+  g.innerHTML = `<div class="brand" role="button" tabindex="0" data-act="home" title="Ir para o início"><i></i><div>TimeTracker<small>Study Planner</small></div></div>
   <div class="gcard"><div class="auth stack" id="authForm"><div class="ahead"><div><p class="eyebrow">Conta</p><h2>${isIn ? 'Entrar na conta' : 'Criar conta'}</h2><p class="small muted">${isIn ? 'Entre para acessar seus estudos e metas.' : (CLOUD ? 'Use seu e-mail e uma senha. A conta funciona no PC e no celular.' : 'Escolha um usuário e uma senha.')}</p></div></div>
     <div class="field"><label class="label" for="aUser">${CLOUD ? 'E-mail' : 'Usuário'}</label><input type="${CLOUD ? 'email' : 'text'}" id="aUser" autocomplete="${CLOUD ? 'email' : 'username'}" autocapitalize="none" spellcheck="false" ${isIn ? '' : `placeholder="${CLOUD ? 'voce@exemplo.com' : 'ex.: maria'}"`}>${isIn || CLOUD ? '' : '<span class="small muted">De 3 a 20 letras, números, ponto, hífen ou _.</span>'}</div>
     ${authField('aPass', 'Senha', isIn ? 'current-password' : 'new-password', isIn ? '' : 'Mínimo de 6 caracteres.')}
@@ -1642,6 +1643,7 @@ document.addEventListener('click', e => {
       $('#gh').dispatchEvent(new Event('input', { bubbles: true })); b.parentElement.remove(); break;
     }
     case 'data': dataModal(); break;
+    case 'home': if (auth.session) { closeMenu(); closeModal(); ui.view = 'hoje'; go(); const m = $('#view'); if (m && m.parentElement) m.scrollTop = 0; } else { auth.tab = 'in'; accountModal(); } break;
     case 'close': closeModal(); break;
     case 'wprev': ui.weekOff = clamp(ui.weekOff - 1, weekLim()); go(); break;
     case 'wnext': ui.weekOff = clamp(ui.weekOff + 1, weekLim()); go(); break;
