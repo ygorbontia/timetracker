@@ -1,0 +1,2 @@
+// Preencha com os dados do seu projeto Supabase (Project Settings > API). Use a chave "anon public" — NUNCA a "service_role".
+window.TT_CLOUD = { url: "https://rbidsslmshfvbqnbplqs.supabase.co/rest/v1/", key: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJiaWRzc2xtc2hmdmJxbmJwbHFzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIxMTUwNzksImV4cCI6MjEwNzY5MTA3OX0.IjcfZW9EZlJUds4Ej9zxiS7yo2Pxg4Drit0s1uQanB8" };

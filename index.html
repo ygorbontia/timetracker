@@ -1,0 +1,1923 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html{color-scheme:dark}body{margin:0}[hidden]{display:none!important}</style>
+<title>TimeTracker & Study Planner</title>
+
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#09090b"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png">
+<script src="config.js"></script>
+<style>@font-face{font-family:'JetBrains Mono';font-weight:400;src:url(fonts/JetBrainsMono-Regular.woff2)}@font-face{font-family:'JetBrains Mono';font-weight:500;src:url(fonts/JetBrainsMono-Medium.woff2)}@font-face{font-family:'JetBrains Mono';font-weight:700;src:url(fonts/JetBrainsMono-Bold.woff2)}@font-face{font-family:'Plus Jakarta Sans';font-weight:200 800;src:url(fonts/PlusJakartaSans.ttf)}</style>
+<style>
+/* Layout: sidebar à esquerda (barra inferior no celular), cartões de vidro sobre fundo escuro com brilho ciano/violeta. */
+:root {
+  --bg: #09090b;
+  --surface: #141419;
+  --surface-2: #1b1b22;
+  --line: #2a2a34;
+  --fg: #ececf1;
+  --muted: #a1a1b0;
+  --accent: #06b6d4;
+  --accent-fg: #67e8f9;
+  --violet: #7c3aed;
+  --violet-fg: #a78bfa;
+  --ok: #10b981;
+  --ok-fg: #34d399;
+  --bad: #ef4444;
+  --bad-fg: #f87171;
+  --warn: #f59e0b;
+  --warn-fg: #fbbf24;
+  --font-ui: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
+body {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(900px 480px at 8% -8%, color-mix(in srgb, var(--accent) 13%, transparent), transparent 70%),
+    radial-gradient(800px 460px at 100% 0%, color-mix(in srgb, var(--violet) 14%, transparent), transparent 70%);
+  background-attachment: fixed;
+  color: var(--fg);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  line-height: 1.5;
+  padding-block: 20px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent-fg); outline-offset: 2px; }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+h1, h2, h3, p { margin: 0; }
+h1 { font-size: clamp(1.35rem, 2.6vw, 1.85rem); font-weight: 700; letter-spacing: -0.02em; text-wrap: balance; }
+h2 { font-size: 1.05rem; font-weight: 700; letter-spacing: -0.01em; }
+.eyebrow { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent-fg); }
+.muted { color: var(--muted); }
+.small { font-size: 0.82rem; }
+
+.shell { display: grid; grid-template-columns: 216px minmax(0, 1fr); gap: 28px; max-width: 1240px; margin: 0 auto; }
+.side { position: sticky; top: env(safe-area-inset-top, 0px); align-self: start; display: flex; flex-direction: column; gap: 24px; padding-top: 4px; }
+.brand { display: flex; align-items: center; gap: 10px; font-family: var(--font-mono); font-weight: 700; font-size: 0.98rem; letter-spacing: -0.02em; }
+.brand i { width: 10px; height: 20px; background: var(--accent); box-shadow: 0 0 14px var(--accent); animation: blink 1.4s steps(2, jump-none) infinite; }
+.brand small { display: block; font-weight: 400; color: var(--muted); font-size: 0.7rem; letter-spacing: 0.04em; }
+@keyframes blink { 50% { opacity: 0.25; } }
+.nav { display: flex; flex-direction: column; gap: 4px; }
+.nav button { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: none; border: 1px solid transparent; border-radius: 10px; color: var(--muted); font-weight: 500; text-align: left; transition: color .15s, background .15s, border-color .15s, box-shadow .15s; }
+.nav .ls { display: none; }
+.nav button svg { width: 19px; height: 19px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.nav button:hover { color: var(--fg); background: var(--surface); }
+.nav button[aria-current="page"] { color: var(--accent-fg); background: color-mix(in srgb, var(--accent) 11%, var(--surface)); border-color: color-mix(in srgb, var(--accent) 38%, transparent); box-shadow: 0 0 22px -8px var(--accent); }
+
+main { min-width: 0; display: flex; flex-direction: column; gap: 20px; }
+.view { display: flex; flex-direction: column; gap: 20px; animation: rise .28s ease-out; }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.pagehead { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 16px; }
+.pagehead > div { min-width: 0; }
+.nw { display: inline-block; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+.card { background: color-mix(in srgb, var(--surface) 82%, transparent); backdrop-filter: blur(10px); border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; transition: border-color .2s, box-shadow .2s; }
+.card:hover { border-color: color-mix(in srgb, var(--accent) 30%, var(--line)); box-shadow: 0 0 28px -14px var(--accent); }
+.label { font-size: 0.74rem; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+.value { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 1.55rem; font-weight: 700; letter-spacing: -0.03em; margin-top: 6px; }
+.value.big { font-size: 1.9rem; }
+.tone-ok { color: var(--ok-fg); } .tone-bad { color: var(--bad-fg); } .tone-warn { color: var(--warn-fg); } .tone-acc { color: var(--accent-fg); } .tone-mut { color: var(--muted); }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 9px 16px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); font-weight: 600; font-size: 0.92rem; transition: transform .1s, box-shadow .15s, border-color .15s, opacity .15s; }
+.btn:hover:not(:disabled) { border-color: var(--accent); box-shadow: 0 0 18px -6px var(--accent); }
+.btn:active:not(:disabled) { transform: scale(0.97); }
+.btn:disabled { opacity: 0.38; cursor: not-allowed; }
+.btn svg { width: 17px; height: 17px; fill: currentColor; flex: none; }
+.btn.start { background: color-mix(in srgb, var(--ok) 20%, var(--surface)); border-color: color-mix(in srgb, var(--ok) 55%, transparent); color: var(--ok-fg); }
+.btn.start:hover:not(:disabled) { border-color: var(--ok); box-shadow: 0 0 18px -6px var(--ok); }
+.btn.pause { background: color-mix(in srgb, var(--warn) 18%, var(--surface)); border-color: color-mix(in srgb, var(--warn) 55%, transparent); color: var(--warn-fg); }
+.btn.pause:hover:not(:disabled) { border-color: var(--warn); box-shadow: 0 0 18px -6px var(--warn); }
+.btn.done { background: color-mix(in srgb, var(--violet) 26%, var(--surface)); border-color: color-mix(in srgb, var(--violet) 65%, transparent); color: #d8ccff; }
+.btn.done:hover:not(:disabled) { border-color: var(--violet-fg); box-shadow: 0 0 18px -6px var(--violet); }
+.btn.ghost { background: transparent; }
+.btn.danger { color: var(--bad-fg); }
+.nav button { position: relative; }
+.sdot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 8px var(--ok); margin-right: 6px; vertical-align: middle; }
+.sdot.pend { background: #f5b942; box-shadow: 0 0 8px #f5b942; } .sdot.offline, .sdot.off { background: #8a8a99; box-shadow: none; } .sdot.auth, .sdot.err { background: #ef5b5b; box-shadow: 0 0 8px #ef5b5b; }
+.nav button .sdot { position: absolute; top: 9px; right: 10px; margin: 0; }
+.nav button i.on { position: absolute; top: 9px; right: 10px; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+.auth input { background: var(--bg); border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; width: 100%; min-width: 0; }
+.auth .ahead { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.auth .ahead h2 { font-size: 1.3rem; margin-top: 4px; }
+.auth .ahead .small { margin-top: 4px; }
+.auth .pw { position: relative; }
+.auth .pw input { padding-right: 44px; }
+.auth .peek { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; display: grid; place-items: center; border: 0; background: transparent; color: var(--muted); border-radius: 8px; }
+.auth .peek:hover, .auth .peek.on { color: var(--accent-fg); }
+.auth .peek svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.auth .who { display: flex; align-items: center; gap: 14px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-2); }
+.auth .av { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 1.2rem; color: var(--accent-fg); background: color-mix(in srgb, var(--accent) 14%, var(--bg)); border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); box-shadow: 0 0 18px -6px var(--accent); }
+.auth .who strong { display: block; font-size: 1.05rem; }
+.auth .who .small { display: flex; align-items: center; gap: 6px; color: var(--ok-fg); margin-top: 2px; }
+.auth .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+.auth .rows { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.auth .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 14px; background: transparent; border: 0; text-align: left; width: 100%; }
+.auth .rows .row + .row { border-top: 1px solid var(--line); }
+.auth .row:hover { background: var(--surface-2); }
+.auth .row strong { display: block; font-size: .95rem; }
+.auth .row small { display: block; color: var(--muted); font-size: .8rem; margin-top: 2px; }
+.auth .row svg { width: 18px; height: 18px; fill: none; stroke: var(--muted); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.auth .row.danger { border: 1px solid color-mix(in srgb, var(--bad) 35%, transparent); border-radius: 14px; }
+.auth .row.danger strong { color: var(--bad-fg); }
+.auth .row.danger:hover { background: color-mix(in srgb, var(--bad) 10%, transparent); }
+.auth .warnbox { font-size: .88rem; color: var(--bad-fg); border: 1px solid color-mix(in srgb, var(--bad) 40%, transparent); background: color-mix(in srgb, var(--bad) 10%, transparent); border-radius: 10px; padding: 10px 12px; }
+.auth .wide { width: 100%; padding: 11px 16px; }
+.auth .swap { text-align: center; margin: 0; color: var(--muted); }
+
+.auth input:hover { border-color: #3a3a46; }
+.auth .tabs { display: flex; gap: 6px; }
+.auth .tabs button { flex: 1; padding: 8px; border-radius: 9px; border: 1px solid var(--line); background: transparent; color: var(--muted); font-weight: 600; }
+.auth .tabs button[aria-pressed="true"] { color: var(--accent-fg); border-color: color-mix(in srgb, var(--accent) 45%, transparent); background: color-mix(in srgb, var(--accent) 11%, var(--surface)); }
+.auth .err.ok { color: var(--ok-fg); }
+.auth .err { color: var(--bad-fg); font-size: .85rem; min-height: 1.2em; }
+.btn.stop { background: color-mix(in srgb, var(--bad) 12%, transparent); border-color: color-mix(in srgb, var(--bad) 45%, transparent); color: var(--bad-fg); }
+.btn.stop:hover:not(:disabled) { border-color: var(--bad); box-shadow: 0 0 18px -6px var(--bad); }
+.btn.sm { padding: 6px 11px; font-size: 0.82rem; }
+.iconbtn { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); transition: border-color .15s, box-shadow .15s; }
+.iconbtn:disabled { opacity: .35; cursor: not-allowed; box-shadow: none; }
+.iconbtn:hover:not(:disabled) { border-color: var(--accent); box-shadow: 0 0 16px -6px var(--accent); }
+.iconbtn svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+.badge { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; font-size: 0.74rem; font-weight: 600; border: 1px solid; white-space: nowrap; }
+.badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.badge.ok { color: var(--ok-fg); border-color: color-mix(in srgb, var(--ok) 45%, transparent); background: color-mix(in srgb, var(--ok) 12%, transparent); }
+.badge.bad { color: var(--bad-fg); border-color: color-mix(in srgb, var(--bad) 45%, transparent); background: color-mix(in srgb, var(--bad) 12%, transparent); }
+.badge.warn { color: var(--warn-fg); border-color: color-mix(in srgb, var(--warn) 45%, transparent); background: color-mix(in srgb, var(--warn) 11%, transparent); }
+
+input[type="number"], input[type="date"], input.tx, #rDom, select, textarea { background: var(--bg); border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; width: 100%; min-width: 0; transition: border-color .15s, box-shadow .15s; }
+input:hover, select:hover, textarea:hover { border-color: #3a3a46; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+.noterow { display:flex; align-items:center; justify-content:flex-end; gap:10px; margin-top:8px; } .noterow .mut { font-size:.8rem; color:var(--warn); margin-right:auto; } .noterow .mut.ok { color:var(--ok-fg); font-weight:600; }
+textarea { resize: vertical; min-height: 110px; line-height: 1.55; }
+input[type="number"] { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.hm { display: flex; align-items: center; gap: 6px; }
+.hm input { width: 72px; text-align: right; }
+.hm span { color: var(--muted); font-size: 0.85rem; margin-right: 8px; }
+.hm input:disabled { opacity: 0.4; cursor: not-allowed; }
+.pair { display: flex; flex-wrap: wrap; gap: 16px 24px; }
+.pair .field { flex: 1 1 200px; }
+.mstats { margin-top: 12px; }
+
+
+
+/* ROTINA */
+.link.back { display: inline-block; margin-bottom: 6px; font-size: 0.85rem; text-decoration: none; }
+.link.back:hover { text-decoration: underline; }
+.routine { display: flex; flex-direction: column; gap: 14px; }
+.rhd { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 10px 16px; }
+.rhd h2 { font-size: 1.1rem; }
+.rlist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.ritem { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 8px 12px; border-left: 3px solid transparent; transition: background .15s, border-color .15s; }
+.ritem + .ritem { border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
+.ritem.yes { border-left-color: var(--ok); background: color-mix(in srgb, var(--ok) 8%, transparent); }
+.ritem.no { border-left-color: var(--bad); background: color-mix(in srgb, var(--bad) 8%, transparent); }
+.ritem .rt { color: var(--accent-fg); font-size: 0.9rem; }
+.ritem .ra { min-width: 0; overflow-wrap: anywhere; }
+.rb { display: inline-flex; gap: 6px; }
+.mk { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 9px; border: 1px solid var(--line); background: var(--surface-2); color: var(--muted); transition: border-color .15s, background .15s, color .15s; }
+.mk svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.mk:disabled { opacity: 0.35; cursor: not-allowed; }
+.mk.y:hover:not(:disabled), .mk.y[aria-pressed="true"] { border-color: var(--ok); color: var(--ok-fg); background: color-mix(in srgb, var(--ok) 22%, var(--surface)); }
+.mk.n:hover:not(:disabled), .mk.n[aria-pressed="true"] { border-color: var(--bad); color: var(--bad-fg); background: color-mix(in srgb, var(--bad) 20%, var(--surface)); }
+.rempty { padding: 6px 0; }
+.reditor { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.reditor .rhead { display: grid; grid-template-columns: 124px minmax(0, 1fr); gap: 10px; width: 100%; padding-right: 46px; font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+#rrows { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.rrow { display: grid; grid-template-columns: 124px minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+.rrow .tm { display: flex; align-items: center; gap: 4px; }
+.rrow .tm input { width: 100%; min-width: 0; text-align: center; font-family: var(--font-mono); padding-inline: 4px; }
+.rrow .tm b { color: var(--muted); }
+.rprev { list-style: none; margin: 0; padding: 0; font-size: 0.8rem; display: flex; flex-direction: column; gap: 2px; }
+.rprev span { color: var(--accent-fg); }
+@media (max-width: 480px) { .reditor .rhead { grid-template-columns: 112px minmax(0, 1fr); } .rrow { grid-template-columns: 112px minmax(0, 1fr) auto; gap: 6px; } .ritem { gap: 8px; padding: 8px; } }
+
+
+/* ROTINA: observações */
+.ritem { grid-template-areas: "t a b" ". n n"; row-gap: 0; }
+.auth .row > span:first-child { min-width: 0; flex: 1; }
+.ritem .rt { grid-area: t; } .ritem .ra { grid-area: a; } .ritem .rb { grid-area: b; }
+.ritem .rn { grid-area: n; font-size: 0.82rem; color: var(--muted); font-style: italic; overflow-wrap: anywhere; padding: 4px 0 2px; }
+.mk.o:hover, .mk.o.has { border-color: var(--accent); color: var(--accent-fg); }
+.mk.o.has svg { fill: color-mix(in srgb, var(--accent) 30%, transparent); }
+.rrow .ro { grid-column: 1 / -1; }
+.card.day[role="button"] { cursor: pointer; }
+.card.day[role="button"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+
+/* ROTINA recolhível */
+.rhd[role="button"] { cursor: pointer; border-radius: 10px; }
+.rhd[role="button"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+.rtit { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.rtit .cv { width: 20px; height: 20px; flex: none; fill: none; stroke: var(--muted); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; transform: rotate(-90deg); transition: transform .2s, stroke .15s; }
+.routine.open .rtit .cv { transform: none; }
+.rhd[role="button"]:hover .cv { stroke: var(--accent-fg); }
+.routine:not(.open) { gap: 0; }
+.rlist[hidden] { display: none; }
+
+/* BARRA DE ROLAGEM oculta (a página continua rolando) e só o conteúdo central rola no desktop */
+html, body, main, #gate, .sheet, textarea { scrollbar-width: none; -ms-overflow-style: none; }
+::-webkit-scrollbar { width: 0; height: 0; display: none; }
+.tblwrap { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.tblwrap::-webkit-scrollbar { display: block; height: 8px; }
+.tblwrap::-webkit-scrollbar-thumb { background: var(--line); border-radius: 8px; }
+@media (min-width: 821px) {
+  html, body { height: 100%; overflow: hidden; }
+  .shell { height: calc(100vh - 40px); height: calc(100dvh - 40px); }
+  .side { position: static; }
+  main { height: 100%; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 24px; }
+  #gate { min-height: 0; height: calc(100vh - 40px); height: calc(100dvh - 40px); overflow-y: auto; }
+}
+
+/* TELA DE ENTRADA */
+.shell[hidden], #gate[hidden] { display: none !important; }
+#gate { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; padding: 24px 16px; }
+#gate .gcard { width: min(100%, 420px); background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: blur(10px); border: 1px solid var(--line); border-radius: 16px; padding: 26px; box-shadow: 0 30px 80px -24px #000, 0 0 44px -20px var(--accent); animation: rise .25s ease-out; }
+
+/* PLANILHA */
+.tblwrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; background: color-mix(in srgb, var(--surface) 82%, transparent); }
+table.plan { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 900px; font-size: 0.88rem; }
+.plan th { padding: 10px 4px; text-align: center; font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; line-height: 1.3; color: var(--accent-fg); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); border-bottom: 1px solid var(--line); }
+.plan td { padding: 6px 4px; text-align: center; vertical-align: middle; border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
+.plan tbody tr:last-child td { border-bottom: 0 }
+.plan .l { text-align: left; }
+.plan .acts { width: 1%; }
+.plan .acts .btn { display: flex; width: 100%; }
+.plan .acts .btn + .btn { margin-top: 4px; }
+.pc { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; width: 100%; min-width: 86px; min-height: 42px; padding: 4px 6px; border-radius: 8px; border: 1px solid transparent; background: var(--surface-2); color: var(--muted); font-family: var(--font-mono); font-size: 0.74rem; font-variant-numeric: tabular-nums; }
+.pc small { font-family: var(--font-ui); font-size: 0.68rem; opacity: 0.9; }
+button.pc:hover { border-color: var(--accent); }
+.pc.ok { background: color-mix(in srgb, var(--ok) 24%, var(--surface)); color: var(--ok-fg); }
+.pc.late { background: color-mix(in srgb, var(--bad) 28%, var(--surface)); color: var(--bad-fg); }
+.pc.over { border-color: color-mix(in srgb, var(--bad) 70%, transparent); color: var(--bad-fg); background: transparent; }
+.pc.due { border-color: var(--accent); color: var(--accent-fg); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.pc.none { opacity: 0.4; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 12px; height: 12px; border-radius: 3px; background: var(--surface-2); border: 1px solid var(--line); }
+.sw.ok { background: color-mix(in srgb, var(--ok) 45%, var(--surface)); border-color: transparent; } .sw.late { background: color-mix(in srgb, var(--bad) 50%, var(--surface)); border-color: transparent; }
+.sw.over { background: transparent; border-color: var(--bad); } .sw.due { background: transparent; border-color: var(--accent); }
+
+/* HOJE */
+.today { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
+@media (min-width: 1000px) { .today { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); align-items: stretch; } }
+.timer { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; padding: 28px 18px; }
+.dial { position: relative; width: min(100%, 300px); aspect-ratio: 1; }
+.dial svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.dial circle { fill: none; stroke-width: 7; }
+.dial .track { stroke: var(--surface-2); }
+.dial .prog { stroke: var(--accent); stroke-linecap: round; filter: drop-shadow(0 0 7px var(--accent)); transition: stroke-dasharray .4s linear; }
+.dial .center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center; }
+.clock { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: clamp(2rem, 9vw, 2.9rem); font-weight: 700; letter-spacing: -0.04em; text-shadow: 0 0 22px color-mix(in srgb, var(--accent) 55%, transparent); }
+.clock.idle { text-shadow: none; color: var(--muted); }
+.controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; width: 100%; }
+.controls .btn { flex: 1 1 96px; max-width: 150px; padding-inline: 10px; }
+@media (max-width: 480px) { .controls .btn { gap: 6px; font-size: 0.86rem; } }
+.stats3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+/* SEMANA */
+.grid-days { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+.grid-days > .day { flex: 0 1 calc((100% - 12px) / 2); min-width: 0; }
+@media (min-width: 760px) { .grid-days > .day { flex-basis: calc((100% - 36px) / 4); } }
+.sumhead { margin-top: 14px; }
+.hoje-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.hoje-stats .wide { grid-column: 1 / -1; }
+.metarow { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 16px; margin-top: 10px; }
+.day { display: flex; flex-direction: column; gap: 10px; }
+.day.today-c { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+.day.total { background: color-mix(in srgb, var(--accent) 8%, var(--surface)); border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+.day header { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+.day header b { font-size: 0.95rem; }
+.day header span { font-family: var(--font-mono); font-size: 0.74rem; color: var(--muted); }
+.kv { display: flex; justify-content: space-between; gap: 8px; font-size: 0.84rem; }
+.kv span:first-child { color: var(--muted); }
+.kv .mono { font-weight: 500; text-align: right; }
+.bar { height: 5px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--accent); border-radius: 3px; box-shadow: 0 0 10px var(--accent); }
+.nav-period { display: flex; align-items: center; gap: 10px; }
+.nav-period .title { font-weight: 600; min-width: 0; }
+
+/* MÊS */
+.stats4 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (min-width: 900px) { .stats4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 0.8rem; color: var(--muted); margin-top: 10px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+
+/* CALENDÁRIO */
+.cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.cal .dow { text-align: center; font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding: 4px 0; }
+.cell { min-height: 78px; display: flex; flex-direction: column; justify-content: space-between; gap: 4px; padding: 7px 8px; text-align: left; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); transition: border-color .15s, box-shadow .15s, transform .1s; min-width: 0; overflow: hidden; }
+.cell:hover { border-color: var(--accent); box-shadow: 0 0 16px -6px var(--accent); }
+.cell.blank { visibility: hidden; pointer-events: none; }
+.cell.is-today { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.cell .n { font-family: var(--font-mono); font-size: 0.85rem; font-weight: 700; display: flex; justify-content: space-between; align-items: center; }
+.cell .dot { width: 8px; height: 8px; border-radius: 50%; }
+.cell .t { font-family: var(--font-mono); font-size: 0.68rem; color: var(--muted); line-height: 1.25; overflow-wrap: anywhere; }
+.cell.fut { opacity: 0.62; }
+@media (max-width: 560px) { .cell { min-height: 60px; padding: 5px; } .cell .t { font-size: 0.6rem; } .cal { gap: 4px; } }
+
+/* DESEMPENHO */
+.cmp { display: grid; grid-template-columns: minmax(0, 1.1fr) repeat(3, minmax(0, 1fr)); gap: 0; font-size: 0.9rem; }
+.cmp > div { padding: 10px 6px; border-top: 1px solid var(--line); min-width: 0; }
+.cmp > .h { border-top: 0; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.cmp .mono { font-weight: 500; font-size: 0.86rem; }
+.cmp .r { text-align: right; }
+.periods { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.range { display: flex; gap: 8px; flex-wrap: wrap; }
+.range .field { flex: 1 1 130px; }
+.sect { display: flex; flex-direction: column; gap: 12px; }
+
+/* METAS */
+.rgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.rcard { display: flex; flex-direction: column; gap: 10px; }
+.rtop { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.rdesc { font-weight: 600; }
+.empty { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; padding: 40px 18px; }
+.link { background: none; border: 0; padding: 0; color: var(--accent-fg); text-decoration: underline; font-size: inherit; cursor: pointer; }
+.badge.mut { color: var(--muted); border-color: var(--line); background: transparent; }
+
+/* MODAL / TOAST */
+.scrim { position: fixed; inset: 0; z-index: 30; background: rgba(4, 4, 7, 0.72); backdrop-filter: blur(4px); display: grid; place-items: center; padding: 16px; animation: fade .15s ease-out; }
+@keyframes fade { from { opacity: 0; } }
+.sheet { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; width: min(100%, 520px); max-height: 100%; overflow-y: auto; padding: 22px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 30px 80px -20px #000, 0 0 40px -18px var(--accent); animation: rise .2s ease-out; }
+.sheet .foot { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+.checks { display: flex; flex-wrap: wrap; gap: 6px; }
+.checks label { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; font-size: 0.85rem; cursor: pointer; }
+.checks input { accent-color: var(--accent); }
+.toast { position: fixed; left: 50%; bottom: calc(92px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 12px); z-index: 40; max-width: min(92vw, 420px); background: var(--surface-2); border: 1px solid var(--accent); border-radius: 10px; padding: 10px 16px; font-size: 0.88rem; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; }
+.toast.on { opacity: 1; transform: translate(-50%, 0); }
+.warnbar { font-size: 0.8rem; color: var(--warn-fg); border: 1px solid color-mix(in srgb, var(--warn) 40%, transparent); border-radius: 10px; padding: 8px 12px; }
+
+.menubtn { display: none; }
+@media (max-width: 820px) {
+  .pagehead:has(.nav-period) { flex-wrap: nowrap; align-items: flex-start; }
+  .pagehead:has(.nav-period) > div:first-child { flex: 1 1 0; }
+  .pagehead:has(.nav-period) .nav-period { flex: none; gap: 6px; }
+  .pagehead:has(.nav-period) h1 { font-size: clamp(1.05rem, 5.2vw, 1.35rem); }
+  .shell { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  main { padding-top: 64px; }
+  .side { position: fixed; left: 0; right: 0; top: 0; bottom: auto; z-index: 20; flex-direction: row; align-items: center; justify-content: space-between; gap: 0; padding: calc(8px + env(safe-area-inset-top, 0px)) max(14px, env(safe-area-inset-right, 0px)) 8px max(14px, env(safe-area-inset-left, 0px)); background: color-mix(in srgb, var(--bg) 90%, transparent); backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); }
+  .side small { display: none; }
+  .menubtn { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); }
+  .menubtn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+  .menubtn[aria-expanded="true"] { border-color: var(--accent); box-shadow: 0 0 16px -6px var(--accent); }
+  .nav { display: none; position: absolute; top: calc(100% + 6px); right: max(12px, env(safe-area-inset-right, 0px)); width: min(260px, calc(100vw - 24px)); padding: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 18px 40px -12px rgba(0,0,0,.7); }
+  .side.open .nav { display: flex; }
+  .nav .ls { display: none; }
+  .toast { bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+
+<div class="shell">
+  <aside class="side">
+    <div class="brand"><i></i><div>TimeTracker<small>Study Planner</small></div></div>
+    <button class="menubtn" id="menuBtn" data-act="menu" aria-label="Menu" aria-expanded="false" aria-controls="nav"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+    <nav class="nav" id="nav" aria-label="Seções"></nav>
+  </aside>
+  <main id="view" aria-live="polite"></main>
+</div>
+<div id="gate" hidden></div>
+<div id="modal"></div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+/*LOGIC-START*/
+const LS = 'timetracker_study_v1';
+const AUTH_KEY = 'timetracker_auth_v1';
+// Usuário conectado (lido já no início para carregar os dados certos). Sem conta conectada, vale o armazenamento comum.
+// A conexão vale só até fechar o aplicativo (sessionStorage): ao abrir de novo, pede o login.
+const SESSION_KEY = 'timetracker_session_v1', WIPE_KEY = 'timetracker_wipe_v1';
+// Limpeza única: remove contas, metas, rotinas e registros que já estivessem salvos neste aparelho.
+(() => {
+  try {
+    if (localStorage.getItem(WIPE_KEY)) return;
+    const del = [];
+    for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && (k === AUTH_KEY || k.startsWith(LS))) del.push(k); }
+    del.forEach(k => localStorage.removeItem(k));
+    try { sessionStorage.removeItem(SESSION_KEY); } catch (e) {}
+    localStorage.setItem(WIPE_KEY, '1');
+  } catch (e) {}
+})();
+let curUser = (() => { try { return sessionStorage.getItem(SESSION_KEY) || null; } catch (e) { return null; } })();
+const dataKey = () => curUser ? LS + '_u_' + curUser : LS;
+const pad = n => String(n).padStart(2, '0');
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parse = s => { const [y, m, d] = s.split('-').map(Number); const dt = new Date(2000, m - 1, d); dt.setFullYear(y); return dt; };
+const addDays = (s, n) => { const d = parse(s); d.setDate(d.getDate() + n); return ymd(d); };
+const today = () => ymd(new Date());
+const fmtBR = s => { const [y, m, d] = s.split('-'); return `${d}/${m}/${y}`; };
+const WD = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+const WDs = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+const MON = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+const hm = sec => { sec = Math.max(0, Math.round(sec)); return `${Math.floor(sec / 3600)}h ${pad(Math.floor(sec % 3600 / 60))}m`; };
+const short = sec => { sec = Math.max(0, Math.round(sec)); const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60); return m ? `${h}h${pad(m)}` : `${h}h`; };
+const clock = ms => { const s = Math.floor(Math.max(0, ms) / 1000); return `${pad(Math.floor(s / 3600))}:${pad(Math.floor(s % 3600 / 60))}:${pad(s % 60)}`; };
+const pct = p => `${Math.round(p)}%`;
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+let storageOK = true;
+const blank = () => ({ sessions: {}, goals: [], tasks: [], routines: [], rdays: {}, timer: { running: false, startTs: 0, acc: 0 }, closed: null });
+const store = () => (typeof window !== 'undefined' && window.ttStore) || null;
+function load() {
+  try {
+    const r = curUser ? localStorage.getItem(dataKey()) : null;
+    if (r) { const o = JSON.parse(r); return { sessions: o.sessions || {}, goals: o.goals || [], tasks: normTasks(o.tasks), routines: Array.isArray(o.routines) ? o.routines : [], rdays: o.rdays && typeof o.rdays === 'object' ? o.rdays : {}, timer: o.timer || blank().timer, closed: o.closed || null }; }
+  } catch (e) { storageOK = false; }
+  return blank();
+}
+let S = load();
+function save() { if (!curUser) return; try { localStorage.setItem(dataKey(), JSON.stringify(S)); } catch (e) { storageOK = false; } if (typeof cloudTouch === 'function') cloudTouch(); }
+
+// ---- metas recorrentes ----
+const dim = (y, m) => new Date(y, m + 1, 0).getDate();
+const addYears = (s, n) => { const d = parse(s); d.setFullYear(d.getFullYear() + n); return ymd(d); };
+const maxEnd = start => addDays(addYears(start, 2), -1); // período de no máximo 2 anos
+const CAL_MIN = '2026-09-01'; // mês mais antigo permitido
+const calMax = () => { const t = parse(today()); return { y: t.getFullYear() + 3, m: t.getMonth() }; }; // mês atual + 3 anos
+const maxDate = () => { const c = calMax(); return ymd(new Date(c.y, c.m + 1, 0)); };
+const minStart = () => CAL_MIN;
+const WDN = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
+const WDP = ['domingos', 'segundas', 'terças', 'quartas', 'quintas', 'sextas', 'sábados'];
+function matchGoal(g, ds) {
+  if (ds < g.startDate || (g.endDate && ds > g.endDate)) return false;
+  const d = parse(ds), s = parse(g.startDate), wd = d.getDay(), dom = d.getDate(), n = dim(d.getFullYear(), d.getMonth());
+  switch (g.type) {
+    case 'NONE': return ds === g.startDate;
+    case 'DAILY': return true;
+    case 'WEEKLY': return wd === (g.weekday ?? s.getDay());
+    case 'MONTHLY_DATE': return dom === (g.dom ?? s.getDate()); // dia 31 só existe nos meses com 31 dias
+    case 'MONTHLY_RELATIVE': {
+      if (wd !== (g.weekday ?? s.getDay())) return false;
+      const nth = g.nth ?? Math.ceil(s.getDate() / 7);
+      return nth === -1 ? dom + 7 > n : Math.ceil(dom / 7) === nth;
+    }
+    case 'WORKDAYS': return wd >= 1 && wd <= 5;
+    case 'CUSTOM': return (g.customDays || []).includes(wd);
+  }
+  return false;
+}
+function winningRule(ds) { let w = null; for (const g of S.goals) if (matchGoal(g, ds)) w = g; return w; } // a criada por último vence
+function resolveGoal(ds) { const g = winningRule(ds); return g ? g.hours : 0; }
+function ruleDesc(g) {
+  const s = parse(g.startDate || today()), wd = g.weekday ?? s.getDay(), masc = wd === 0 || wd === 6;
+  const ordF = ['primeira', 'segunda', 'terceira', 'quarta'], ordM = ['primeiro', 'segundo', 'terceiro', 'quarto'];
+  switch (g.type) {
+    case 'NONE': return `Somente em ${fmtBR(g.startDate)}`;
+    case 'DAILY': return 'Todos os dias';
+    case 'WEEKLY': return `${masc ? 'Todo' : 'Toda'} ${WDN[wd]}`;
+    case 'MONTHLY_DATE': { const d = g.dom || s.getDate(); return `Todo dia ${d} do mês`; }
+    case 'MONTHLY_RELATIVE': {
+      const nth = g.nth ?? Math.ceil(s.getDate() / 7);
+      const o = nth === -1 ? (masc ? 'último' : 'última') : (masc ? ordM : ordF)[nth - 1] || `${nth}º`;
+      return `${masc ? 'Todo' : 'Toda'} ${o} ${WDN[wd]} do mês`;
+    }
+    case 'WORKDAYS': return 'Dias úteis (segunda a sexta)';
+    case 'CUSTOM': {
+      const l = [...(g.customDays || [])].sort().map(i => WDP[i]);
+      if (!l.length) return 'Escolha ao menos um dia';
+      if (l.length === 7) return 'Todos os dias';
+      const t = l.length > 1 ? l.slice(0, -1).join(', ') + ' e ' + l[l.length - 1] : l[0];
+      return t.charAt(0).toUpperCase() + t.slice(1);
+    }
+  }
+  return '';
+}
+function validateRule(f, checkStart) {
+  if (!(f.hours > 0)) return 'Informe uma meta maior que zero.';
+  if (f.hours > 24) return 'A meta diária não pode passar de 24 horas.';
+  if (f.type === 'CUSTOM' && !(f.customDays || []).length) return 'Escolha ao menos um dia da semana.';
+  if (f.type === 'MONTHLY_DATE' && !(f.dom >= 1 && f.dom <= 31)) return 'Informe o dia do mês, de 1 a 31.';
+  if (!f.startDate || !f.endDate) return 'Preencha as datas de início e de término.';
+  if (f.startDate < '1900-01-01' || f.endDate < '1900-01-01') return 'Confira as datas: o ano precisa ter 4 dígitos.';
+  if (checkStart && f.startDate < CAL_MIN) return 'A data de início não pode ser anterior a setembro de 2026.';
+  if (f.endDate > maxDate() || f.startDate > maxDate()) return 'As datas não podem passar de ' + MON[calMax().m].toLowerCase() + ' de ' + calMax().y + '.';
+  if (f.endDate < f.startDate) return 'A data de término precisa ser igual ou depois do início.';
+  if (f.endDate > maxEnd(f.startDate)) return 'O período pode ter no máximo 2 anos.';
+  return null;
+}
+
+// ---- cálculo de dia ----
+function calc(goalSec, secs, status) {
+  const g = Math.round(goalSec / 60) * 60, st = Math.floor(secs / 60) * 60; // só minutos completos contam
+  const lost = status === 'PENDENTE' ? 0 : status === 'CONCLUIDO' ? Math.max(0, g - st) : g;
+  const perf = (g <= 0 || status === 'NAO_ESTUDADO') ? 0 : Math.min(100, st / g * 100);
+  return { lost, perf };
+}
+function info(ds) {
+  const s = S.sessions[ds], t = today();
+  const goalH = s ? ((s.ov || ds < t) ? s.goal : resolveGoal(ds)) : (ds < t ? 0 : resolveGoal(ds));
+  const goal = Math.round(goalH * 3600);
+  const raw = s ? s.secs : 0, secs = Math.floor(raw / 60) * 60;
+  let status = s ? s.status : 'PENDENTE';
+  if (ds < t && status === 'PENDENTE') status = (raw > 0 || goal <= 0) ? 'CONCLUIDO' : 'NAO_ESTUDADO'; // dia que passou nunca fica pendente; meta 0 conta como cumprida
+  const c = calc(goal, secs, status);
+  return { ds, goal, goalH, secs, raw, status, notes: s ? s.notes : '', lost: c.lost, perf: c.perf, future: ds > t, isToday: ds === t };
+}
+function ensure(ds) {
+  return S.sessions[ds] || (S.sessions[ds] = { goal: resolveGoal(ds), secs: 0, status: 'PENDENTE', notes: '', ov: false, fin: false });
+}
+// Virada de dia: fecha os dias anteriores a hoje e guarda a meta que cada um tinha. Meta > 0 sem estudo vira NÃO ESTUDADO.
+function finalizeDay(d) {
+  const s = S.sessions[d];
+  if (!s) {
+    const g = resolveGoal(d);
+    if (g > 0) S.sessions[d] = { goal: g, secs: 0, status: 'NAO_ESTUDADO', notes: '', ov: false, fin: true };
+  } else if (!s.fin) {
+    if (!s.ov) s.goal = resolveGoal(d);
+    s.fin = true;
+    if (s.secs > 0) s.status = 'CONCLUIDO';
+    else if (s.status === 'PENDENTE') s.status = s.goal > 0 ? 'NAO_ESTUDADO' : 'CONCLUIDO';
+  }
+}
+function rollover() {
+  const y = addDays(today(), -1);
+  let d;
+  if (S.closed) d = addDays(S.closed, 1);
+  else d = Object.keys(S.sessions).concat(S.goals.map(g => g.startDate)).sort()[0];
+  let n = 0;
+  while (d && d <= y && n++ < 4000) { finalizeDay(d); d = addDays(d, 1); }
+  S.closed = y; save();
+}
+// Dias de hoje em diante que já têm estudo registrado deixam de acompanhar a meta recorrente.
+function freezeFilled() {
+  const t = today();
+  for (const k of Object.keys(S.sessions)) {
+    if (k < t) continue;
+    const s = S.sessions[k];
+    if (!s.ov && (s.secs > 0 || s.status !== 'PENDENTE')) { s.goal = resolveGoal(k); s.ov = true; }
+  }
+}
+// Meta nova com início no passado: dias anteriores a hoje recebem a meta (exceto os ajustados à mão).
+function materialize(g) {
+  const y = addDays(today(), -1), end = g.endDate && g.endDate < y ? g.endDate : y;
+  let d = g.startDate, n = 0;
+  while (d <= end && n++ < 800) {
+    if (matchGoal(g, d)) {
+      const x = S.sessions[d], gl = resolveGoal(d);
+      if (!x) S.sessions[d] = { goal: gl, secs: 0, status: gl > 0 ? 'NAO_ESTUDADO' : 'CONCLUIDO', notes: '', ov: false, fin: true };
+      else if (!x.ov) { // dia com meta herdada de regra antiga: a meta nova passa a valer (dias editados à mão não mudam)
+        x.goal = gl; x.fin = true;
+        if (!(x.secs > 0)) x.status = gl > 0 ? 'NAO_ESTUDADO' : 'CONCLUIDO';
+      }
+    }
+    d = addDays(d, 1);
+  }
+}
+// Redefinir: apaga horas, observações e meta do dia, inclusive a vinda de meta recorrente (exceção que vale mais que a regra).
+function resetDay(d) {
+  const past = d < today();
+  S.sessions[d] = { goal: 0, secs: 0, status: past ? 'CONCLUIDO' : 'PENDENTE', notes: '', ov: true, fin: past, rst: true };
+  resetRoutineDay(d);
+  if (d === today()) timerReset();
+}
+function resetMonth(y, m) { rollover(); for (const d of monthDates(y, m)) resetDay(d); save(); }
+function resetAll() { S.sessions = {}; S.goals = []; S.routines = []; S.rdays = {}; S.closed = null; timerReset(); rollover(); }
+const newId = () => 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+// Dia redefinido e ainda intocado (sem meta, horas ou observações): uma meta recorrente nova ou editada pode passar por cima dele.
+const isPureReset = x => !!(x && x.rst && x.ov && !(x.secs > 0) && !x.notes && !(x.goal > 0));
+function clearResets(g, from) {
+  let d = from && from > g.startDate ? from : g.startDate, n = 0;
+  while (d <= g.endDate && n++ < 800) { if (isPureReset(S.sessions[d]) && matchGoal(g, d)) delete S.sessions[d]; d = addDays(d, 1); }
+}
+function addRule(f) { rollover(); freezeFilled(); const g = { ...f, id: newId() }; S.goals.push(g); clearResets(g); materialize(g); save(); return g; }
+function updateRule(id, f) { rollover(); freezeFilled(); const i = S.goals.findIndex(x => String(x.id) === String(id)); if (i < 0) return; S.goals[i] = { ...f, id: S.goals[i].id }; clearResets(S.goals[i], today()); save(); }
+function deleteRule(id) { rollover(); freezeFilled(); S.goals = S.goals.filter(x => String(x.id) !== String(id)); save(); }
+
+function agg(dates) {
+  const t = today(); let gAll = 0, goal = 0, studied = 0, lost = 0;
+  for (const d of dates) {
+    const i = info(d); gAll += i.goal;
+    if (d <= t) { goal += i.goal; studied += i.secs; lost += i.lost; }
+  }
+  return { gAll, goal, studied, lost, perf: goal > 0 ? Math.min(100, studied / goal * 100) : 0 };
+}
+const range = (a, b) => { if (a > b) [a, b] = [b, a]; const out = []; let d = a, n = 0; while (d <= b && n++ < 3700) { out.push(d); d = addDays(d, 1); } return out; };
+const weekStart = off => { const d = parse(today()); d.setDate(d.getDate() - d.getDay() + off * 7); return ymd(d); };
+const weekDates = off => { const a = weekStart(off); return range(a, addDays(a, 6)); };
+const monthDates = (y, m) => range(ymd(new Date(y, m, 1)), ymd(new Date(y, m + 1, 0)));
+
+// ---- planilha de estudos: tarefas e revisões (24h, 7 dias, 30 dias) ----
+function normTasks(a) { // números das tarefas sempre 1, 2, 3... na ordem atual
+  const l = (Array.isArray(a) ? a : []).map((t, i) => [t, i]).sort((x, y) => (x[0].n || 0) - (y[0].n || 0) || x[1] - y[1]).map(x => x[0]);
+  l.forEach((t, i) => { t.n = i + 1; });
+  return l;
+}
+const REV = [[1, '24h'], [7, '7D'], [30, '30D']];
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const taskExp = (t, k) => t.d0 ? addDays(t.d0, REV[k][0]) : null; // data prevista da revisão k
+function revState(t, k, td) { // ok = no prazo, late = feita atrasada, over = atrasada sem fazer, due = é hoje, wait = ainda não chegou
+  const exp = taskExp(t, k), done = t.rv && t.rv[k];
+  if (!exp) return { st: 'none', exp: null, done: '' };
+  if (done) return { st: done <= exp ? 'ok' : 'late', exp, done };
+  return { st: exp < td ? 'over' : exp === td ? 'due' : 'wait', exp, done: '' };
+}
+const taskPerf = t => t.ex > 0 ? Math.round(t.hit / t.ex * 100) : null;
+const sortedTasks = () => S.tasks.map((t, i) => [t, i]).sort((a, b) => a[0].n - b[0].n || a[1] - b[1]).map(x => x[0]);
+const nextTaskN = () => S.tasks.reduce((m, t) => Math.max(m, t.n || 0), 0) + 1;
+function validateTask(f, td) {
+  if (!/^\d{1,3}$/.test(f.trail)) return 'Preencha a trilha com um número.';
+  if (!String(f.disc).trim()) return 'Preencha a disciplina.';
+  if (!/^\d{1,3}$/.test(f.aula)) return 'Preencha a aula com um número.';
+  const dates = [f.d0, ...f.rv];
+  for (const d of dates) {
+    if (!d) continue;
+    if (!DATE_RE.test(d) || d < '2000-01-01') return 'Data inválida. Use o formato dd/mm/aaaa.';
+    if (d > td) return 'Essa data ainda não chegou.';
+  }
+  if (!f.d0 && f.rv.some(Boolean)) return 'Preencha a data de execução antes das revisões.';
+  if (f.d0 && f.rv.some(d => d && d < f.d0)) return 'A revisão não pode ser antes da data de execução.';
+  if (!Number.isInteger(f.ex) || f.ex < 0 || !Number.isInteger(f.hit) || f.hit < 0) return 'Use números inteiros nos exercícios.';
+  if (f.hit > f.ex) return 'Os acertos não podem passar da quantidade de exercícios.';
+  return '';
+}
+const cleanTask = f => ({ trail: String(f.trail).padStart(2, '0'), disc: String(f.disc).trim().replace(/\s+/g, ' '), aula: String(f.aula).padStart(2, '0'), d0: f.d0 || '', rv: [0, 1, 2].map(k => f.rv[k] || ''), ex: f.ex, hit: f.hit });
+function addTask(f) { const t = { ...cleanTask(f), n: nextTaskN(), id: newId() }; S.tasks.push(t); save(); return t; }
+function updateTask(id, f) { const i = S.tasks.findIndex(x => x.id === id); if (i < 0) return null; S.tasks[i] = { ...cleanTask(f), n: S.tasks[i].n, id }; save(); return S.tasks[i]; }
+function deleteTask(id) { S.tasks = normTasks(S.tasks.filter(x => x.id !== id)); save(); }
+function setTaskDate(id, k, val, td) { // k 0 = execução, 1..3 = revisões; devolve texto de erro ou ''
+  const t = S.tasks.find(x => x.id === id); if (!t) return 'Tarefa não encontrada.';
+  const f = { ...t, rv: [...t.rv] };
+  if (k === 0) { f.d0 = val; if (!val) f.rv = ['', '', '']; } else f.rv[k - 1] = val;
+  const err = validateTask(f, td); if (err) return err;
+  t.d0 = f.d0 || ''; t.rv = f.rv.map(x => x || ''); save(); return '';
+}
+
+// ---- rotina do dia ----
+// S.routines: modelos semanais [{id, weekday, startDate, endDate, items:[{id,t,a}]}]; vale o criado por último.
+// S.rdays: o que é só de um dia { 'AAAA-MM-DD': { items: null | [{id,t,a}], marks: {idDaAtividade: true|false} } }
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+const matchRoutine = (r, ds) => r.weekday === parse(ds).getDay() && ds >= r.startDate && ds <= r.endDate;
+function routineFor(ds) { let w = null; for (const r of S.routines) if (matchRoutine(r, ds)) w = r; return w; }
+const byTime = l => l.map((x, i) => [x, i]).sort((a, b) => a[0].t < b[0].t ? -1 : a[0].t > b[0].t ? 1 : a[1] - b[1]).map(x => x[0]);
+function dayRoutine(ds) {
+  const rd = S.rdays[ds], tpl = routineFor(ds), base = rd && rd.items ? rd.items : tpl ? tpl.items : [], mk = rd ? rd.marks : {};
+  return { custom: !!(rd && rd.items && !rd.fz), tpl, items: byTime(base).map(x => ({ ...x, m: mk[x.id] === true ? true : mk[x.id] === false ? false : null, o: (rd && rd.notes && rd.notes[x.id]) || '' })) };
+}
+function validateItems(items, needOne) {
+  if (needOne && !items.length) return 'Adicione ao menos uma atividade.';
+  for (const x of items) {
+    if (!TIME_RE.test(x.t)) return 'Horário inválido. Use hh:mm, de 00:00 a 23:59.';
+    if (!String(x.a).trim()) return 'Preencha o nome de todas as atividades.';
+  }
+  return '';
+}
+const capAct = v => { const t = String(v == null ? '' : v).trim().replace(/\s+/g, ' '); return t.charAt(0).toLocaleUpperCase('pt-BR') + t.slice(1).toLocaleLowerCase('pt-BR'); }; // 'bom DIA' -> 'Bom dia'
+const cleanItems = items => items.map(x => ({ id: x.id || newId(), t: x.t, a: capAct(x.a) }));
+const rdEnsure = ds => { const rd = S.rdays[ds] || (S.rdays[ds] = { items: null, marks: {}, notes: {} }); if (!rd.notes) rd.notes = {}; return rd; };
+function rdTidy(ds) { const rd = S.rdays[ds]; if (rd && !rd.items && !Object.keys(rd.marks).length && !Object.keys(rd.notes || {}).length) delete S.rdays[ds]; }
+const withIds = items => items.map(x => ({ ...x, id: x.id || newId() }));
+function saveDayNotes(ds, items) { // observações (só deste dia) vêm no campo "o" de cada atividade
+  const rd = rdEnsure(ds);
+  for (const x of items) { if (!('o' in x)) continue; const o = String(x.o || '').trim().slice(0, 300); if (o) rd.notes[x.id] = o; else delete rd.notes[x.id]; }
+  rdTidy(ds);
+}
+function setNote(ds, id, text) { const rd = rdEnsure(ds), o = String(text || '').trim().slice(0, 300); if (o) rd.notes[id] = o; else delete rd.notes[id]; rdTidy(ds); save(); }
+function sameItems(a, b) { // a: atividades atuais, b: as editadas (comparação por id, ignora a ordem e as observações)
+  if (a.length !== b.length) return false;
+  const m = new Map(a.map(x => [x.id, x])), nm = capAct;
+  return b.every(x => { const y = m.get(x.id); return y && y.t === x.t && nm(y.a) === nm(x.a); });
+}
+function setMark(ds, id, v) { // v: true cumpriu, false não cumpriu, null limpa. Só vale de hoje para trás.
+  if (ds > today()) return false;
+  const rd = rdEnsure(ds); if (v === null) delete rd.marks[id]; else rd.marks[id] = v;
+  rdTidy(ds); save(); return true;
+}
+function saveDayRoutine(ds, items) {
+  items = withIds(items); const rd = rdEnsure(ds); rd.items = cleanItems(items); delete rd.fz; delete rd.rst;
+  const ids = new Set(rd.items.map(x => x.id)); for (const k of Object.keys(rd.marks)) if (!ids.has(k)) delete rd.marks[k];
+  for (const k of Object.keys(rd.notes)) if (!ids.has(k)) delete rd.notes[k];
+  saveDayNotes(ds, items); save();
+}
+function applyRoutineFrom(ds, items) { // vale para este dia e para as próximas semanas do mesmo dia da semana
+  const tpl = routineFor(ds); if (!tpl) { saveDayRoutine(ds, items); return; }
+  items = withIds(items); freezeRoutinePast();
+  const its = cleanItems(items);
+  if (ds === tpl.startDate) tpl.items = its;
+  else { const n = { id: newId(), weekday: tpl.weekday, startDate: ds, endDate: tpl.endDate, items: its }; S.routines.splice(S.routines.indexOf(tpl) + 1, 0, n); tpl.endDate = addDays(ds, -1); }
+  const rd = rdEnsure(ds); rd.items = null; delete rd.fz; delete rd.rst;
+  const ids = new Set(its.map(x => x.id)); for (const k of Object.keys(rd.marks)) if (!ids.has(k)) delete rd.marks[k];
+  for (const k of Object.keys(rd.notes)) if (!ids.has(k)) delete rd.notes[k];
+  saveDayNotes(ds, items); save();
+}
+// Redefinir: apaga a rotina do dia (atividades, marcações e observações), inclusive a vinda de rotina recorrente.
+function resetRoutineDay(d) { if (routineFor(d)) S.rdays[d] = { items: [], marks: {}, notes: {}, rst: true }; else delete S.rdays[d]; }
+const isPureRoutineReset = x => !!(x && x.rst && x.items && !x.items.length && !Object.keys(x.marks || {}).length && !Object.keys(x.notes || {}).length);
+function clearRoutineResets(r, from) {
+  let d = from && from > r.startDate ? from : r.startDate, n = 0;
+  while (d <= r.endDate && n++ < 800) { if (isPureRoutineReset(S.rdays[d]) && matchRoutine(r, d)) delete S.rdays[d]; d = addDays(d, 1); }
+}
+function restoreDayRoutine(ds) { // volta a seguir a rotina recorrente
+  const rd = S.rdays[ds]; if (!rd) return;
+  rd.items = null; delete rd.fz; delete rd.rst; const tpl = routineFor(ds), ids = new Set(tpl ? tpl.items.map(x => x.id) : []);
+  for (const k of Object.keys(rd.marks)) if (!ids.has(k)) delete rd.marks[k];
+  for (const k of Object.keys(rd.notes || {})) if (!ids.has(k)) delete rd.notes[k];
+  rdTidy(ds); save();
+}
+function freezeRoutinePast() { // dias que já passaram ficam como estavam quando o modelo muda
+  const td = today(); let first = null;
+  for (const r of S.routines) if (!first || r.startDate < first) first = r.startDate;
+  if (!first) return;
+  let d = first, n = 0;
+  while (d < td && n++ < 1000) { const tpl = routineFor(d); if (tpl) { const rd = rdEnsure(d); if (!rd.items) { rd.items = tpl.items.map(x => ({ ...x })); rd.fz = true; } } d = addDays(d, 1); }
+}
+function validateRoutine(f, checkStart) {
+  if (!Number.isInteger(f.weekday) || f.weekday < 0 || f.weekday > 6) return 'Escolha o dia da semana.';
+  if (!f.startDate || !f.endDate) return 'Preencha as datas de início e de término.';
+  if (f.startDate < '1900-01-01' || f.endDate < '1900-01-01') return 'Confira as datas: o ano precisa ter 4 dígitos.';
+  if (checkStart && f.startDate < CAL_MIN) return 'A data de início não pode ser anterior a setembro de 2026.';
+  if (f.endDate > maxDate() || f.startDate > maxDate()) return 'As datas não podem passar de ' + MON[calMax().m].toLowerCase() + ' de ' + calMax().y + '.';
+  if (f.endDate < f.startDate) return 'A data de término precisa ser igual ou depois do início.';
+  if (f.endDate > maxEnd(f.startDate)) return 'O período pode ter no máximo 2 anos.';
+  return validateItems(f.items, true);
+}
+function addRoutine(f) { freezeRoutinePast(); const r = { id: newId(), weekday: f.weekday, startDate: f.startDate, endDate: f.endDate, items: cleanItems(f.items) }; S.routines.push(r); clearRoutineResets(r); save(); return r; }
+function updateRoutine(id, f) {
+  const i = S.routines.findIndex(x => x.id === id); if (i < 0) return null;
+  freezeRoutinePast(); S.routines[i] = { id, weekday: f.weekday, startDate: f.startDate, endDate: f.endDate, items: cleanItems(f.items) }; clearRoutineResets(S.routines[i], today()); save(); return S.routines[i];
+}
+function deleteRoutine(id) { freezeRoutinePast(); S.routines = S.routines.filter(x => x.id !== id); save(); }
+/*LOGIC-END*/
+
+// ---------- UI ----------
+const $ = s => document.querySelector(s);
+const ICON = {
+  hoje: '<path d="M3 11 12 3l9 8"/><path d="M5 10v10h14V10"/>',
+  semana: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M8 15h8"/>',
+  mes: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/>',
+  cal: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4m-7 13 2 2 4-4"/>',
+  metas: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12h.01"/>',
+  desemp: '<path d="M4 20V10M10 20V4M16 20v-8M2 20h20"/>',
+  plan: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/>',
+  conta: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>',
+};
+const NAV = [['hoje', 'Hoje'], ['semana', 'Essa Semana', 'Semana'], ['mes', 'Esse Mês', 'Mês'], ['cal', 'Calendário'], ['plan', 'Planilha de Estudos', 'Planilha'], ['metas', 'Metas e Rotinas', 'Metas'], ['desemp', 'Desempenho'], ['conta', 'Conta']];
+const now0 = new Date();
+const ui = {
+  view: 'hoje', routineOpen: false, day: null, dayFrom: 'cal', weekOff: 0, monOff: 0, calY: now0.getFullYear(), calM: now0.getMonth(),
+  planF: 'all', r1: [addDays(today(), -6), today()], r2: [addDays(today(), -13), addDays(today(), -7)],
+};
+let curDay = today();
+
+const PLAY_HTML = '<svg viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5z"/></svg>Iniciar';
+const PAUSE_HTML = '<svg viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>Pausar';
+const RESET_HTML = '<svg viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>Zerar';
+const toneOf = st => st === 'CONCLUIDO' ? 'ok' : st === 'NAO_ESTUDADO' ? 'bad' : 'warn';
+const labelOf = st => st === 'CONCLUIDO' ? 'Concluído' : st === 'NAO_ESTUDADO' ? 'Não estudado' : 'Pendente';
+const badge = st => `<span class="badge ${toneOf(st)}">${labelOf(st)}</span>`;
+const perfTone = (p, goal) => goal <= 0 ? 'mut' : p >= 80 ? 'ok' : p >= 50 ? 'warn' : 'bad';
+const chev = d => `<svg viewBox="0 0 24 24"><path d="${d < 0 ? 'm15 6-6 6 6 6' : 'm9 6 6 6-6 6'}"/></svg>`;
+const stat = (label, val, tone = '', extra = '', id = '') => `<div class="card"><div class="label">${label}</div><div class="value ${tone ? 'tone-' + tone : ''}" ${id ? `id="${id}"` : ''}>${val}</div>${extra}</div>`;
+
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('on');
+  clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('on'), 2400);
+}
+
+// cronômetro
+const elapsed = () => S.timer.acc + (S.timer.running ? Date.now() - S.timer.startTs : 0);
+function timerStart() { if (S.timer.running) return; S.timer.running = true; S.timer.startTs = Date.now(); save(); tick(); }
+function timerPause() { if (!S.timer.running) return; S.timer.acc += Date.now() - S.timer.startTs; S.timer.running = false; save(); tick(); }
+function timerReset() { S.timer = { running: false, startTs: 0, acc: 0 }; }
+function timerDone() {
+  const total = Math.floor(elapsed() / 1000);
+  if (total < 1) { toast('Inicie o cronômetro antes de concluir.'); return; }
+  const s = ensure(today()); s.secs += total; s.status = 'CONCLUIDO'; timerReset(); save();
+  toast(`Sessão salva: ${clock(total * 1000)} adicionadas ao dia.`); render();
+}
+function tick() {
+  const el = $('#clock'); if (!el) return;
+  const ms = elapsed(), i = info(today());
+  paintMetaSrc(i);
+  const live = i.raw + ms / 1000;
+  el.textContent = clock(live * 1000); el.classList.toggle('idle', !S.timer.running && live < 1);
+  $('#stLost').textContent = hm(i.status === 'CONCLUIDO' ? calc(i.goal, Math.round(live), 'CONCLUIDO').lost : i.lost);
+  const C = 2 * Math.PI * 112, p = i.goal > 0 ? Math.min(1, live / i.goal) : 0;
+  $('#ring').setAttribute('stroke-dasharray', `${(p * C).toFixed(1)} ${C.toFixed(1)}`);
+  $('#ringTxt').textContent = i.goal > 0 ? `${Math.round(p * 100)}% da meta` : 'Sem meta para hoje';
+  $('#stStudied').textContent = hm(live);
+  const run = S.timer.running, tg = $('#bToggle');
+  if (tg.dataset.run !== String(run)) { tg.dataset.run = String(run); tg.className = 'btn ' + (run ? 'pause' : 'start'); tg.innerHTML = run ? PAUSE_HTML : PLAY_HTML; }
+  $('#bDone').disabled = ms < 1000; $('#bReset').disabled = live < 1;
+}
+
+// ---------- telas ----------
+function paintMetaSrc(i) {
+  const el = $('#metaTxt'), btn = $('#unovBtn'); if (!el) return;
+  const sess = S.sessions[i.ds], r = winningRule(i.ds);
+  let txt, link = null;
+  if (sess && sess.ov) {
+    txt = 'Definida manualmente para hoje.';
+    if (r && Math.round(r.hours * 3600) !== i.goal) link = `Usar a meta recorrente (${hm(r.hours * 3600)})`;
+  } else txt = r ? `Meta recorrente: ${ruleDesc(r)}` : 'Sem meta recorrente para hoje. Crie uma no menu Metas.';
+  if (el.textContent !== txt) el.textContent = txt;
+  btn.hidden = !link; if (link && btn.textContent !== link) btn.textContent = link;
+}
+const ruleBadge = g => {
+  const t = today();
+  if (g.endDate && g.endDate < t) return '<span class="badge mut">Encerrada</span>';
+  if (g.startDate > t) return '<span class="badge warn">Agendada</span>';
+  return '<span class="badge ok">Ativa</span>';
+};
+function viewMetas() {
+  const cards = S.goals.map(g => `<div class="card rcard"><div class="rtop"><div><div class="value" style="margin-top:0">${hm(g.hours * 3600)}</div><div class="small muted">por dia</div></div>${ruleBadge(g)}</div>
+    <div class="rdesc">${esc(ruleDesc(g))}</div>
+    <div class="small muted mono">${fmtBR(g.startDate)}${g.endDate ? ' a ' + fmtBR(g.endDate) : ' em diante'}</div>
+    <div class="row" style="margin-top:4px"><button class="btn sm" data-act="editrule" data-id="${esc(String(g.id))}">Editar</button><button class="btn sm ghost danger" data-act="delrule" data-id="${esc(String(g.id))}">Excluir</button></div></div>`).join('');
+  return `<div class="pagehead"><div><p class="eyebrow">Metas</p><h1>Metas e rotinas</h1></div><div class="row"><button class="btn start" data-act="newrule">Nova meta</button><button class="btn" data-act="newroutine">Nova rotina</button></div></div>
+  <h2 class="sumhead">Metas recorrentes</h2>
+  ${S.goals.length ? `<div class="rgrid">${cards}</div><p class="small muted">Se duas metas valem no mesmo dia, vale a que foi criada por último. A meta digitada em um dia específico vale mais que todas.</p>` : `<div class="card empty"><p><b>Nenhuma meta recorrente ainda.</b></p><p class="small muted">Crie uma para que a meta diária seja preenchida sozinha nos dias que você escolher.</p><button class="btn start" data-act="newrule">Criar a primeira meta</button></div>`}
+  <h2 class="sumhead">Rotinas semanais</h2>
+  ${S.routines.length ? `<div class="rgrid">${S.routines.map(routineCardMeta).join('')}</div><p class="small muted">Cada rotina vale para um dia da semana. Se duas valem no mesmo dia, vale a que foi criada por último. A rotina editada em um dia específico vale mais que todas.</p>` : `<div class="card empty"><p><b>Nenhuma rotina ainda.</b></p><p class="small muted">Monte a tabela de horários de um dia da semana. Ela aparece sozinha em Hoje e no Calendário.</p><button class="btn" data-act="newroutine">Criar a primeira rotina</button></div>`}`;
+}
+
+function viewHoje() {
+  const t = today(), i = info(t), d = parse(t);
+  const dateTxt = `${WD[d.getDay()]}, ${d.getDate()} de ${MON[d.getMonth()]} de ${d.getFullYear()}`;
+  const C = 2 * Math.PI * 112;
+  return `<div class="pagehead"><div><p class="eyebrow">Hoje</p><h1>${dateTxt}</h1></div>
+    ${window.ttStore ? '' : '<div class="row"><button class="btn ghost sm" data-act="data">Dados</button></div>'}</div>
+  ${!storageOK ? '<p class="warnbar">O navegador bloqueou o armazenamento. Seus registros valem só até fechar esta página.</p>' : ''}
+  <div class="today">
+    <section class="card timer" aria-label="Cronômetro">
+      <div class="dial"><svg viewBox="0 0 260 260" aria-hidden="true"><circle class="track" cx="130" cy="130" r="112"/><circle class="prog" id="ring" cx="130" cy="130" r="112" stroke-dasharray="0 ${C}"/></svg>
+        <div class="center"><div class="clock idle" id="clock">00:00:00</div><div class="small muted" id="ringTxt"></div></div></div>
+      <div class="controls">
+        <button class="btn start" id="bToggle" data-act="toggle" data-run="false">${PLAY_HTML}</button>
+        <button class="btn done" id="bDone" data-act="done"><svg viewBox="0 0 24 24"><path d="m9.5 17.5-5-5 1.9-1.9 3.1 3.1 8.1-8.1 1.9 1.9z"/></svg>Concluir</button>
+        <button class="btn ghost" id="bReset" data-act="reset">${RESET_HTML}</button>
+      </div>
+      <p class="small muted" style="text-align:center">Barra de espaço inicia e pausa. Zerar apaga todo o tempo estudado hoje.</p>
+    </section>
+    <div class="stack">
+      <div class="hoje-stats">
+        <div class="card wide"><div class="label">Meta diária</div>
+          <div class="metarow">${hmIn('mt', i.goal)}</div>
+          <div class="small muted" id="metaSrc" style="margin-top:8px"><span id="metaTxt"></span> <button class="link" id="unovBtn" data-act="unov" hidden></button></div></div>
+        ${stat('Horas estudadas', hm(i.secs), 'acc', '', 'stStudied')}
+        <div class="card"><div class="label">Horas perdidas</div><div class="value tone-bad" id="stLost">${hm(i.lost)}</div>
+          <div style="margin-top:8px" id="stBadge">${badge(i.status)}</div><div class="small muted" style="margin-top:6px">Automático, somente leitura</div></div>
+      </div>
+      <div class="card field"><label class="label" for="notes">Observações</label>
+        <textarea id="notes" placeholder="Matérias, tópicos, páginas lidas…">${esc(i.notes)}</textarea>
+        <div class="noterow"><span id="noteSt" class="mut"></span><button class="btn" id="noteSave" data-act="savenote" disabled>Salvar</button></div></div>
+    </div>
+  </div>
+  ${routineCard(t)}`;
+}
+
+function dayCard(i) {
+  const wd = parse(i.ds).getDay(), p = i.goal > 0 ? Math.min(100, i.secs / i.goal * 100) : 0;
+  return `<div class="card day ${i.isToday ? 'today-c' : ''}" role="button" tabindex="0" data-act="day" data-d="${i.ds}" aria-label="Abrir ${WD[wd]}, ${fmtBR(i.ds)}"><header><b>${WD[wd]}</b><span>${fmtBR(i.ds).slice(0, 5)}</span></header>
+    <div>${badge(i.status)}</div>
+    <div class="kv"><span>Meta</span><span class="mono">${hm(i.goal)}</span></div>
+    <div class="kv"><span>Estudadas</span><span class="mono tone-acc">${hm(i.secs)}</span></div>
+    <div class="kv"><span>Perdidas</span><span class="mono ${i.lost ? 'tone-bad' : ''}">${hm(i.lost)}</span></div>
+    <div class="kv"><span>Desempenho</span><span class="mono tone-${perfTone(i.perf, i.goal)}">${pct(i.perf)}</span></div>
+    <div class="bar" aria-hidden="true"><i style="width:${p}%"></i></div></div>`;
+}
+const dm = d => `${d.getDate()} de ${MON[d.getMonth()].toLowerCase()}`;
+const weekRange = ds => `<span class="nw">${fmtBR(ds[0])} a</span> <span class="nw">${fmtBR(ds[6])}</span>`;
+const weekTitle = (off, ds) => off === 0 ? 'Essa semana' : off === -1 ? 'Semana passada' : weekRange(ds);
+const monthTitle = (off, y, m) => off === 0 ? 'Esse mês' : off === -1 ? 'Mês passado' : `<span class="nw">${MON[m]}</span> <span class="nw">de ${y}</span>`;
+function viewSemana() {
+  const ds = weekDates(ui.weekOff), a = agg(ds), infos = ds.map(info);
+  return `<div class="pagehead"><div><h1>${weekTitle(ui.weekOff, ds)}</h1></div>
+    <div class="nav-period"><button class="iconbtn" data-act="wprev" ${ui.weekOff <= weekLim()[0] ? 'disabled' : ''} aria-label="Semana anterior"><svg viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></svg></button>
+    <button class="btn sm ghost" data-act="wnow">Hoje</button>
+    <button class="iconbtn" data-act="wnext" ${ui.weekOff >= weekLim()[1] ? 'disabled' : ''} aria-label="Próxima semana"><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button></div></div>
+  <div class="grid-days">${infos.map(dayCard).join('')}</div>
+  <h2 class="sumhead">Resumo da semana</h2>
+  <div class="stats4">
+    ${stat('Meta da semana', hm(a.gAll))}
+    ${stat('Horas estudadas', hm(a.studied), 'acc')}
+    ${stat('Horas perdidas', hm(a.lost), a.lost ? 'bad' : '')}
+    ${stat('Desempenho semanal', pct(a.perf), perfTone(a.perf, a.goal), `<div class="bar" style="margin-top:10px"><i style="width:${a.perf}%"></i></div>`)}
+  </div>
+  ${a.gAll !== a.goal ? '<p class="small muted">O desempenho considera a meta dos dias até hoje.</p>' : ''}`;
+}
+
+function viewMes() {
+  const base = new Date(now0.getFullYear(), now0.getMonth() + ui.monOff, 1);
+  const ds = monthDates(base.getFullYear(), base.getMonth()), a = agg(ds);
+  return `<div class="pagehead"><div><h1>${monthTitle(ui.monOff, base.getFullYear(), base.getMonth())}</h1></div>
+    <div class="nav-period"><button class="iconbtn" data-act="mprev" ${ui.monOff <= monLim()[0] ? 'disabled' : ''} aria-label="Mês anterior"><svg viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></svg></button>
+    <button class="btn sm ghost" data-act="mnow">Hoje</button>
+    <button class="iconbtn" data-act="mnext" ${ui.monOff >= monLim()[1] ? 'disabled' : ''} aria-label="Próximo mês"><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button></div></div>
+  <div class="stats4">
+    ${stat('Meta do mês', hm(a.goal))}
+    ${stat('Horas estudadas', hm(a.studied), 'acc')}
+    ${stat('Horas perdidas', hm(a.lost), a.lost ? 'bad' : '')}
+    ${stat('Desempenho mensal', pct(a.perf), perfTone(a.perf, a.goal), `<div class="bar" style="margin-top:10px"><i style="width:${a.perf}%"></i></div>`)}
+  </div>`;
+}
+
+function viewCal() {
+  const first = new Date(ui.calY, ui.calM, 1), n = new Date(ui.calY, ui.calM + 1, 0).getDate(), t = today();
+  let cells = WDs.map(w => `<div class="dow">${w}</div>`).join('');
+  for (let k = 0; k < first.getDay(); k++) cells += '<div class="cell blank" aria-hidden="true"></div>';
+  for (let d = 1; d <= n; d++) {
+    const ds = ymd(new Date(ui.calY, ui.calM, d)), i = info(ds), has = i.goal > 0 || i.secs > 0;
+    const dot = i.status === 'CONCLUIDO' ? 'var(--ok)' : i.status === 'NAO_ESTUDADO' ? 'var(--bad)' : (i.goal > 0 ? 'var(--warn)' : 'var(--line)');
+    cells += `<button class="cell ${ds === t ? 'is-today' : ''} ${i.future ? 'fut' : ''}" data-act="day" data-d="${ds}" aria-label="${d} de ${MON[ui.calM]}, ${labelOf(i.status)}">
+      <span class="n"><span>${d}</span><span class="dot" style="background:${dot}"></span></span>
+      <span class="t">${has ? `${short(i.secs)} / ${short(i.goal)}` : '&nbsp;'}</span></button>`;
+  }
+  return `<div class="pagehead"><div><p class="eyebrow">Calendário</p><h1><span class="nw">${MON[ui.calM]}</span> <span class="nw">de ${ui.calY}</span></h1></div>
+    <div class="nav-period"><button class="iconbtn" data-act="cyprev" ${calAt(-1) ? 'disabled' : ''} aria-label="Ano anterior"><svg viewBox="0 0 24 24"><path d="m11 6-6 6 6 6M19 6l-6 6 6 6"/></svg></button>
+    <button class="iconbtn" data-act="cprev" ${calAt(-1) ? 'disabled' : ''} aria-label="Mês anterior"><svg viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></svg></button>
+    <button class="btn sm ghost" data-act="cnow">Hoje</button>
+    <button class="iconbtn" data-act="cnext" ${calAt(1) ? 'disabled' : ''} aria-label="Próximo mês"><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
+    <button class="iconbtn" data-act="cynext" ${calAt(1) ? 'disabled' : ''} aria-label="Próximo ano"><svg viewBox="0 0 24 24"><path d="m13 6 6 6-6 6M5 6l6 6-6 6"/></svg></button></div></div>
+  <section class="card"><div class="cal">${cells}</div>
+  <div class="legend"><span><i style="background:var(--ok)"></i>Concluído</span><span><i style="background:var(--bad)"></i>Não estudado</span><span><i style="background:var(--warn)"></i>Pendente</span></div></section>
+  <section class="card sect"><h2>Redefinir registros</h2>
+    <p class="small muted">Apaga as horas, as observações, a meta e a rotina do período, mesmo as vindas de metas e rotinas recorrentes. Tudo também apaga as metas e rotinas recorrentes.</p>
+    <div class="foot" style="display:flex;flex-wrap:wrap;gap:8px"><button class="btn ghost" data-act="rstmonth" data-label="Redefinir ${MON[ui.calM]}">Redefinir ${MON[ui.calM]}</button>
+    <button class="btn ghost" data-act="rstall" data-label="Redefinir tudo">Redefinir tudo</button></div></section>`;
+}
+
+function weekLim() { // [menor, maior] deslocamento de semana permitido
+  let lo = 0, hi = 0;
+  while (addDays(weekStart(lo - 1), 6) >= CAL_MIN) lo--;
+  while (weekStart(hi + 1) <= maxDate()) hi++;
+  return [lo, hi];
+}
+function monLim() {
+  const t = parse(today()), lo = parse(CAL_MIN);
+  return [(lo.getFullYear() - t.getFullYear()) * 12 + lo.getMonth() - t.getMonth(), 36];
+}
+const clamp = (v, [a, b]) => Math.max(a, Math.min(b, v));
+function calAt(k) { // true se não dá para andar k meses
+  const t = new Date(ui.calY, ui.calM + k, 1), lo = parse(CAL_MIN), c = calMax(), hi = new Date(c.y, c.m, 1);
+  return k < 0 ? ui.calY * 12 + ui.calM + k < lo.getFullYear() * 12 + lo.getMonth() : ui.calY * 12 + ui.calM + k > hi.getFullYear() * 12 + hi.getMonth();
+}
+function calGo(y, m) {
+  const d = new Date(y, m, 1), lo = parse(CAL_MIN), c = calMax(), hi = new Date(c.y, c.m, 1);
+  ui.calY = (d < lo ? lo : d > hi ? hi : d).getFullYear(); ui.calM = (d < lo ? lo : d > hi ? hi : d).getMonth();
+}
+const sgn = (v, f) => v === 0 ? '=' : (v > 0 ? '+' : '−') + f(Math.abs(v));
+function cmpTable(A, B, la, lb) {
+  const row = (name, a, b, f, lowerBetter) => {
+    const d = b - a, good = d === 0 ? '' : ((d < 0) === !!lowerBetter ? 'tone-ok' : 'tone-bad');
+    return `<div>${name}</div><div class="mono r">${f(a)}</div><div class="mono r">${f(b)}</div><div class="mono r ${good}">${sgn(Math.round(d), f)}</div>`;
+  };
+  const pf = v => `${Math.round(v)}${''}%`;
+  const goalRow = `<div>Meta</div><div class="mono r">${hm(A.goal)}</div><div class="mono r">${hm(B.goal)}</div><div class="mono r tone-mut">—</div>`;
+  return `<div class="cmp"><div class="h"></div><div class="h r">${la}</div><div class="h r">${lb}</div><div class="h r">Δ</div>
+    ${goalRow}${row('Estudadas', A.studied, B.studied, hm)}${row('Perdidas', A.lost, B.lost, hm, true)}${row('Desempenho', A.perf, B.perf, pf)}</div>`;
+}
+function custom() {
+  const A = agg(range(ui.r1[0], ui.r1[1])), B = agg(range(ui.r2[0], ui.r2[1]));
+  return `<div class="periods">
+    <div class="card stack"><div class="label">Período 1 · ${fmtBR(ui.r1[0])} a ${fmtBR(ui.r1[1])}</div>${miniStats(A)}</div>
+    <div class="card stack"><div class="label">Período 2 · ${fmtBR(ui.r2[0])} a ${fmtBR(ui.r2[1])}</div>${miniStats(B)}</div></div>
+    <div class="card">${cmpTable(A, B, 'Período 1', 'Período 2')}</div>`;
+}
+const miniStats = a => `<div class="kv"><span>Meta</span><span class="mono">${hm(a.goal)}</span></div><div class="kv"><span>Estudadas</span><span class="mono tone-acc">${hm(a.studied)}</span></div><div class="kv"><span>Perdidas</span><span class="mono ${a.lost ? 'tone-bad' : ''}">${hm(a.lost)}</span></div><div class="kv"><span>Desempenho</span><span class="mono tone-${perfTone(a.perf, a.goal)}">${pct(a.perf)}</span></div>`;
+function viewDesemp() {
+  const wA = agg(weekDates(-1)), wB = agg(weekDates(0));
+  const m0 = new Date(now0.getFullYear(), now0.getMonth(), 1), m1 = new Date(now0.getFullYear(), now0.getMonth() - 1, 1);
+  const mA = agg(monthDates(m1.getFullYear(), m1.getMonth())), mB = agg(monthDates(m0.getFullYear(), m0.getMonth()));
+  const rf = (id, v) => `<div class="field"><label class="small muted" for="${id}">${id.endsWith('a') ? 'Início' : 'Fim'}</label><input type="date" id="${id}" value="${v}" max="9999-12-31"></div>`;
+  return `<div class="pagehead"><div><p class="eyebrow">Desempenho</p><h1>Compare seus períodos</h1></div></div>
+  <section class="card sect"><h2>Semana passada × esta semana</h2>${cmpTable(wA, wB, 'Passada', 'Esta')}</section>
+  <section class="card sect"><h2>Mês passado × este mês</h2>${cmpTable(mA, mB, 'Passado', 'Este')}</section>
+  <section class="sect"><h2>Intervalos personalizados</h2>
+    <div class="periods"><div class="card stack"><div class="label">Período 1</div><div class="range">${rf('r1a', ui.r1[0])}${rf('r1b', ui.r1[1])}</div></div>
+    <div class="card stack"><div class="label">Período 2</div><div class="range">${rf('r2a', ui.r2[0])}${rf('r2b', ui.r2[1])}</div></div></div>
+    <div id="cmpRes" class="sect">${custom()}</div></section>`;
+}
+
+function toggleMenu(on) { const sd = $('.side'), open = on === undefined ? !sd.classList.contains('open') : on; sd.classList.toggle('open', open); $('#menuBtn').setAttribute('aria-expanded', open); }
+const closeMenu = () => toggleMenu(false);
+document.addEventListener('click', e => { if (!e.target.closest('.side')) closeMenu(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMenu(); });
+
+// ---------- planilha de estudos ----------
+const dmy = s => fmtBR(s).slice(0, 5);
+function planCell(t, k) { // k 0 = execução, 1..3 = revisões
+  if (k === 0) return t.d0
+    ? `<button class="pc ok" data-act="pcell" data-id="${t.id}" data-k="0" title="Editar data de execução">${fmtBR(t.d0)}</button>`
+    : `<button class="pc" data-act="pcell" data-id="${t.id}" data-k="0" title="Informar data de execução"><small>A estudar</small></button>`;
+  const r = revState(t, k - 1, today()), lab = `Revisão de ${REV[k - 1][1]}`;
+  if (r.st === 'none') return '<span class="pc none">—</span>';
+  const sub = { ok: '', late: `<small>previsto ${dmy(r.exp)}</small>`, over: '<small>atrasada</small>', due: '<small>hoje</small>', wait: '<small>previsto</small>' }[r.st];
+  return `<button class="pc ${r.st}" data-act="pcell" data-id="${t.id}" data-k="${k}" title="${lab}: previsto para ${fmtBR(r.exp)}"><span>${fmtBR(r.done || r.exp)}</span>${sub}</button>`;
+}
+function viewPlan() {
+  const td = today(), all = sortedTasks();
+  const st = t => [0, 1, 2].map(k => revState(t, k, td).st);
+  const toStudy = all.filter(t => !t.d0).length;
+  const due = all.reduce((n, t) => n + st(t).filter(x => x === 'due').length, 0);
+  const over = all.reduce((n, t) => n + st(t).filter(x => x === 'over').length, 0);
+  const ex = all.reduce((n, t) => n + t.ex, 0), hit = all.reduce((n, t) => n + t.hit, 0), perf = ex ? Math.round(hit / ex * 100) : null;
+  const F = ui.planF;
+  const list = F === 'estudar' ? all.filter(t => !t.d0) : F === 'revisar' ? all.filter(t => st(t).some(x => x === 'due' || x === 'over')) : all;
+  const rows = list.map(t => {
+    const p = taskPerf(t);
+    return `<tr><td class="mono">${pad(t.n)}</td><td class="mono">${esc(t.trail)}</td><td class="l">${esc(t.disc)}</td><td class="mono">${esc(t.aula)}</td>
+      <td>${planCell(t, 0)}</td><td>${planCell(t, 1)}</td><td>${planCell(t, 2)}</td><td>${planCell(t, 3)}</td>
+      <td class="mono">${t.ex || '—'}</td><td class="mono">${t.ex ? t.hit : '—'}</td><td class="mono ${p === null ? 'tone-mut' : 'tone-' + perfTone(p, 1)}">${p === null ? '—' : pct(p)}</td>
+      <td class="acts"><button class="btn sm" data-act="edittask" data-id="${t.id}">Editar</button><button class="btn sm ghost danger" data-act="deltask" data-id="${t.id}">Excluir</button></td></tr>`;
+  }).join('');
+  const chip = (k, n) => `<button class="btn sm ${F === k ? '' : 'ghost'}" data-act="planf" data-f="${k}" ${F === k ? 'aria-pressed="true"' : ''}>${n}</button>`;
+  const head = '<tr><th>Tarefa</th><th>Trilha</th><th class="l">Disciplina</th><th>Aula</th><th>Data<br>Execução</th><th>Data Rev.<br>24h</th><th>Data Rev.<br>7D</th><th>Data Rev.<br>30D</th><th>Qtd.<br>Exercícios</th><th>Qtd.<br>acertos</th><th>Desem-<br>penho</th><th></th></tr>';
+  return `<div class="pagehead"><div><p class="eyebrow">Planilha</p><h1>Planilha de estudos</h1></div><button class="btn start" data-act="newtask">Nova tarefa</button></div>
+  ${all.length ? `<div class="stats4">${stat('A estudar', toStudy, toStudy ? 'acc' : '')}${stat('Revisões hoje', due, due ? 'acc' : '')}${stat('Revisões atrasadas', over, over ? 'bad' : '')}${stat('Desempenho', perf === null ? '—' : pct(perf), perf === null ? 'mut' : perfTone(perf, 1))}</div>
+  <div class="row">${chip('all', 'Todas')}${chip('estudar', 'A estudar')}${chip('revisar', 'Revisar agora')}</div>
+  ${list.length ? `<div class="tblwrap"><table class="plan"><thead>${head}</thead><tbody>${rows}</tbody></table></div>
+  <div class="legend small muted"><span><i class="sw ok"></i>No prazo</span><span><i class="sw late"></i>Feita atrasada</span><span><i class="sw over"></i>Atrasada</span><span><i class="sw due"></i>Hoje</span><span><i class="sw"></i>Ainda não chegou</span></div>` : '<div class="card empty"><p><b>Nada por aqui.</b></p><p class="small muted">Nenhuma tarefa neste filtro.</p></div>'}`
+  : '<div class="card empty"><p><b>Nenhuma tarefa ainda.</b></p><p class="small muted">Cadastre as aulas que você vai estudar. As revisões de 24h, 7 e 30 dias são calculadas a partir da data de execução.</p><button class="btn start" data-act="newtask">Criar a primeira tarefa</button></div>'}`;
+}
+function taskModal(t) {
+  const isNew = !t, td = today();
+  const v = t || { n: nextTaskN(), trail: '', disc: '', aula: '', d0: '', rv: ['', '', ''], ex: 0, hit: 0 };
+  const discs = [...new Set(S.tasks.map(x => x.disc))];
+  const dt = (id, val, lab) => `<div class="field"><label class="label" for="${id}">${lab}</label><input type="date" id="${id}" value="${val}" min="2000-01-01" max="${td}"><span class="small muted" id="${id}h"></span></div>`;
+  openModal(`<div><p class="eyebrow">${isNew ? 'Nova tarefa' : 'Editar tarefa'}</p><h2 style="font-size:1.25rem;margin-top:4px">Tarefa ${pad(v.n)}</h2></div>
+  <form id="taskForm" data-id="${t ? t.id : ''}" class="stack" onsubmit="return false">
+    <div class="pair"><div class="field"><label class="label" for="tTrail">Trilha</label><input class="tx" type="text" id="tTrail" inputmode="numeric" maxlength="3" autocomplete="off" value="${esc(v.trail)}" placeholder="00"></div>
+      <div class="field"><label class="label" for="tAula">Aula</label><input class="tx" type="text" id="tAula" inputmode="numeric" maxlength="3" autocomplete="off" value="${esc(v.aula)}" placeholder="00"></div></div>
+    <div class="field"><label class="label" for="tDisc">Disciplina</label><input class="tx" type="text" id="tDisc" list="discs" maxlength="60" autocomplete="off" value="${esc(v.disc)}"><datalist id="discs">${discs.map(d => `<option value="${esc(d)}">`).join('')}</datalist></div>
+    <div class="pair">${dt('tD0', v.d0, 'Data de execução')}${dt('tR1', v.rv[0], 'Revisão de 24h')}</div>
+    <div class="pair">${dt('tR2', v.rv[1], 'Revisão de 7 dias')}${dt('tR3', v.rv[2], 'Revisão de 30 dias')}</div>
+    <div class="pair"><div class="field"><label class="label" for="tEx">Qtd. de exercícios</label><input type="number" id="tEx" min="0" value="${v.ex || ''}"></div>
+      <div class="field"><label class="label" for="tHit">Qtd. de acertos</label><input type="number" id="tHit" min="0" value="${v.ex ? v.hit : ''}"></div></div>
+    <div class="foot"><button type="button" class="btn ghost" data-act="close">Cancelar</button><button type="button" class="btn start" data-act="savetask">${isNew ? 'Criar tarefa' : 'Salvar'}</button></div>
+  </form>`);
+  taskHints();
+}
+function taskHints() {
+  const d0 = $('#tD0') && $('#tD0').value, ok = d0 && DATE_RE.test(d0);
+  [1, 2, 3].forEach(k => { const el = $('#tR' + k + 'h'); if (el) el.textContent = ok ? 'Previsto para ' + fmtBR(addDays(d0, REV[k - 1][0])) : ''; });
+}
+function readTask() {
+  const n = s => { const x = $(s).value.trim(); return x === '' ? 0 : /^\d+$/.test(x) ? +x : NaN; };
+  return { trail: $('#tTrail').value.trim(), disc: $('#tDisc').value, aula: $('#tAula').value.trim(), d0: $('#tD0').value, rv: [$('#tR1').value, $('#tR2').value, $('#tR3').value], ex: n('#tEx'), hit: n('#tHit') };
+}
+function saveTask() {
+  const id = $('#taskForm').dataset.id, f = readTask(), err = validateTask(f, today());
+  if (err) { toast(err); return; }
+  if (id) updateTask(id, f); else addTask(f);
+  closeModal(); toast(id ? 'Tarefa atualizada.' : 'Tarefa criada.'); render();
+}
+function cellModal(id, k) {
+  const t = S.tasks.find(x => x.id === id); if (!t) return;
+  const cur = k === 0 ? t.d0 : t.rv[k - 1], exp = k ? taskExp(t, k - 1) : null;
+  openModal(`<div><p class="eyebrow">${esc(t.disc)} · trilha ${esc(t.trail)} · aula ${esc(t.aula)}</p><h2 style="font-size:1.25rem;margin-top:4px">${k === 0 ? 'Data de execução' : 'Revisão de ' + REV[k - 1][1]}</h2></div>
+  <form id="cellForm" data-id="${id}" data-k="${k}" class="stack" onsubmit="return false">
+    <div class="field"><label class="label" for="cDate">${k === 0 ? 'Dia em que você estudou' : 'Dia em que você revisou'}</label><input type="date" id="cDate" value="${cur || today()}" min="2000-01-01" max="${today()}"></div>
+    ${exp ? `<p class="small muted">Previsto para ${fmtBR(exp)}.</p>` : ''}
+    ${k === 0 && t.d0 ? '<p class="small muted">Limpar a data de execução também limpa as revisões.</p>' : ''}
+    <div class="foot">${cur ? '<button type="button" class="btn ghost danger" data-act="clearcell" style="margin-right:auto">Limpar data</button>' : ''}<button type="button" class="btn ghost" data-act="close">Cancelar</button><button type="button" class="btn start" data-act="savecell">Salvar</button></div>
+  </form>`);
+}
+function saveCell(clear) {
+  const f = $('#cellForm'), v = clear ? '' : $('#cDate').value;
+  if (!clear && !v) { toast('Escolha uma data.'); return; }
+  const err = setTaskDate(f.dataset.id, +f.dataset.k, v, today());
+  if (err) { toast(err); return; }
+  closeModal(); toast(clear ? 'Data removida.' : 'Data salva.'); render();
+}
+
+// ---------- rotina e tela de um dia ----------
+const X_SVG = '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+const CHEVD = '<svg class="cv" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+const NOTE_SVG = '<svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>';
+const OK_SVG = '<svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>';
+function routineCard(ds) {
+  const R = dayRoutine(ds), fut = ds > today(), n = R.items.length, ok = R.items.filter(x => x.m === true).length, open = ui.routineOpen;
+  const src = R.custom ? 'Rotina só deste dia' : R.tpl ? 'Rotina recorrente de ' + WD[parse(ds).getDay()].toLowerCase() : '';
+  const rows = R.items.map(x => `<li class="ritem ${x.m === true ? 'yes' : x.m === false ? 'no' : ''}"><span class="rt mono">${x.t}</span><span class="ra">${esc(capAct(x.a))}</span>
+    <span class="rb"><button class="mk y" data-act="mark" data-d="${ds}" data-id="${esc(x.id)}" data-v="1" aria-pressed="${x.m === true}" aria-label="Cumpri: ${esc(x.a)}" title="Cumpri" ${fut ? 'disabled' : ''}>${OK_SVG}</button>
+    <button class="mk n" data-act="mark" data-d="${ds}" data-id="${esc(x.id)}" data-v="0" aria-pressed="${x.m === false}" aria-label="Não cumpri: ${esc(x.a)}" title="Não cumpri" ${fut ? 'disabled' : ''}>${X_SVG}</button>
+    <button class="mk o ${x.o ? 'has' : ''}" data-act="notemodal" data-d="${ds}" data-id="${esc(x.id)}" aria-label="Observação: ${esc(x.a)}" title="Observação">${NOTE_SVG}</button></span>${x.o ? `<span class="rn">${esc(x.o)}</span>` : ''}</li>`).join('');
+  return `<section class="card routine ${open || !n ? 'open' : ''}" id="routineCard" data-d="${ds}" aria-label="Rotina do dia"><div class="rhd" ${n ? `role="button" tabindex="0" data-act="rtoggle" data-d="${ds}" aria-expanded="${open}" title="${open ? 'Recolher' : 'Expandir'} a lista"` : ''}><div class="rtit">${n ? CHEVD : ''}<div><h2>Rotina do dia</h2>
+    <p class="small muted">${n && !fut ? `${ok} de ${n} cumpridas${src ? ' · ' + src : ''}` : src || (fut && n ? 'As marcações ficam disponíveis a partir do próprio dia.' : '')}</p></div>
+    </div><button class="btn sm" data-act="editday" data-d="${ds}">Editar rotina</button></div>
+    ${n ? `<ul class="rlist" ${open ? '' : 'hidden'}>${rows}</ul>` : '<p class="small muted rempty">Nenhuma atividade neste dia. Use “Editar rotina” para montar a rotina só deste dia, ou crie uma rotina recorrente no menu Metas e Rotinas.</p>'}
+  </section>`;
+}
+function repaintRoutine(ds) { const el = $('#routineCard'); if (el) { const f = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.act === 'rtoggle'; el.outerHTML = routineCard(ds); if (f) { const h = $('#routineCard .rhd'); if (h) h.focus(); } } }
+
+const rrow = (x = {}, note = false) => { const [h = '', m = ''] = (x.t || '').split(':'); const ti = (c, v, ph, l) => `<input class="tx ${c}" type="text" inputmode="numeric" maxlength="2" placeholder="${ph}" value="${v}" data-prev="${v}" autocomplete="off" aria-label="${l}">`;
+  return `<div class="rrow" data-id="${esc(x.id || '')}"><div class="tm">${ti('rh', h, 'hh', 'Hora')}<b>:</b>${ti('rm', m, 'mm', 'Minutos')}</div>
+    <input class="tx ra" type="text" maxlength="60" placeholder="Atividade" value="${esc(x.a || '')}" autocomplete="off" aria-label="Atividade"><button type="button" class="iconbtn" data-act="rrowdel" aria-label="Remover linha">${X_SVG}</button>${note ? `<input class="tx ro" type="text" maxlength="300" placeholder="Observação (opcional)" value="${esc(x.o || '')}" autocomplete="off" aria-label="Observação">` : ''}</div>`; };
+function addRrow() { const box = $('#rrows'); if (!box) return; box.insertAdjacentHTML('beforeend', rrow()); const r = box.lastElementChild; r.querySelector('.rh').focus(); r.scrollIntoView({ block: 'nearest' }); }
+const editorHTML = (items, note = false) => `<div class="reditor" data-note="${note ? 1 : 0}"><div class="rhead"><span>Horário</span><span>Atividade</span></div><div id="rrows">${(items.length ? items : [{}]).map(x => rrow(x, note)).join('')}</div>
+  <button type="button" class="btn sm ghost" data-act="rrowadd">+ Adicionar atividade</button></div>`;
+function readRows() {
+  const out = [];
+  document.querySelectorAll('#rrows .rrow').forEach(r => {
+    const h = r.querySelector('.rh').value, m = r.querySelector('.rm').value, a = r.querySelector('.ra').value;
+    const ro0 = r.querySelector('.ro'); if (!h && !m && !a.trim() && !(ro0 && ro0.value.trim())) return;
+    const ro = r.querySelector('.ro'), id = r.dataset.id || (r.dataset.id = newId());
+    out.push({ id, t: (h === '' || m === '') ? '--:--' : pad(h) + ':' + pad(m), a, ...(ro ? { o: ro.value } : {}) });
+  });
+  return out;
+}
+function dayRoutineModal(ds, override) {
+  const R = dayRoutine(ds), d = parse(ds);
+  openModal(`<div><p class="eyebrow">Rotina</p><h2 style="font-size:1.25rem;margin-top:4px">${WD[d.getDay()]}, ${fmtBR(ds)}</h2></div>
+  <form id="dayRForm" data-d="${ds}" class="stack" onsubmit="return false">
+    <p class="small muted">${R.tpl ? 'Ao salvar uma mudança de horário ou atividade, você escolhe se vale só para este dia ou também para as próximas ' + WDN[d.getDay()] + 's.' : 'As mudanças valem só para este dia.'}</p>
+    ${editorHTML(override || R.items)}
+    <div class="foot">${R.custom && R.tpl ? '<button type="button" class="btn ghost" data-act="restoreday" style="margin-right:auto">Voltar à rotina recorrente</button>' : ''}<button type="button" class="btn ghost" data-act="close">Cancelar</button><button type="button" class="btn start" data-act="savedayr">Salvar</button></div>
+  </form>`);
+}
+let pendingDayR = null;
+function saveDayR() {
+  const ds = $('#dayRForm').dataset.d, items = readRows(), err = validateItems(items, false);
+  if (err) { toast(err); return; }
+  const R = dayRoutine(ds);
+  if (sameItems(R.items, items)) { saveDayNotes(ds, items); save(); closeModal(); toast('Rotina do dia salva.'); refreshDay(ds); return; } // só observações mudaram
+  if (!R.tpl) { saveDayRoutine(ds, items); closeModal(); toast('Rotina do dia salva.'); refreshDay(ds); return; }
+  pendingDayR = { ds, items }; scopeModal(ds, R.tpl);
+}
+function scopeModal(ds, tpl) {
+  const wd = WDN[parse(ds).getDay()];
+  openModal(`<div class="auth stack"><div class="ahead"><div><p class="eyebrow">Rotina</p><h2>Onde aplicar a mudança?</h2><p class="small muted">Você mudou a rotina de ${WD[parse(ds).getDay()]}, ${fmtBR(ds)}.</p></div></div>
+    <div class="rows">
+      <button type="button" class="row" data-act="dayrscope" data-s="one"><span><strong>Só este dia</strong><small>As outras ${wd}s continuam como estão.</small></span>${CHEV}</button>
+      <button type="button" class="row" data-act="dayrscope" data-s="fwd"><span><strong>Este dia e os próximos</strong><small>Vale para toda ${wd} de ${fmtBR(ds)} até ${fmtBR(tpl.endDate)}. Outros dias da semana não mudam, e as observações não são copiadas.${ds < today() ? ' Os dias que já passaram não mudam.' : ''}</small></span>${CHEV}</button>
+    </div>
+    <div class="foot"><button type="button" class="btn ghost" data-act="scopeback">Voltar</button></div></div>`);
+}
+function noteModal(ds, id) {
+  const x = dayRoutine(ds).items.find(y => y.id === id); if (!x) return;
+  openModal(`<div><p class="eyebrow">${fmtBR(ds)} · ${x.t}</p><h2 style="font-size:1.25rem;margin-top:4px">${esc(x.a)}</h2></div>
+  <form id="noteForm" data-d="${ds}" data-id="${esc(id)}" class="stack" onsubmit="return false">
+    <div class="field"><label class="label" for="rnote">Observação</label><textarea id="rnote" maxlength="300" placeholder="Por que não deu certo, o que aconteceu…" style="min-height:90px">${esc(x.o)}</textarea></div>
+    <div class="foot"><button type="button" class="btn ghost" data-act="close">Cancelar</button><button type="button" class="btn start" data-act="savernote">Salvar</button></div>
+  </form>`);
+}
+function refreshDay(ds) { if (ui.view === 'hoje' || ui.view === 'dia') repaintRoutine(ds); else render(); }
+
+function routineModal(r) {
+  const t = today(), isNew = !r;
+  const start = r ? r.startDate : t, end = r ? r.endDate : addDays(addYears(t, 1), -1), wd = r ? r.weekday : parse(t).getDay();
+  openModal(`<div><p class="eyebrow">${isNew ? 'Nova rotina' : 'Editar rotina'}</p><h2 style="font-size:1.25rem;margin-top:4px">Rotina semanal</h2></div>
+  <form id="routineForm" data-id="${r ? esc(r.id) : ''}" class="stack" onsubmit="return false">
+    <div class="field"><label class="label" for="qWd">Dia da semana</label><select id="qWd">${opts(WD.map((n, i) => [i, n]), wd)}</select></div>
+    <div class="pair">
+      <div class="field"><label class="label" for="qStart">Data de início</label><input type="date" id="qStart" value="${start}" min="${CAL_MIN}" max="${maxDate()}"></div>
+      <div class="field"><label class="label" for="qEnd">Data de término</label><input type="date" id="qEnd" value="${end}" min="${CAL_MIN}" max="${maxDate()}"></div>
+    </div>
+    <p class="small muted">O período pode ter no máximo 2 anos.${isNew ? '' : ' As mudanças valem a partir de hoje. Os dias que já passaram mantêm a rotina que tinham.'}</p>
+    ${editorHTML(r ? byTime(r.items) : [])}
+    <div class="foot"><button type="button" class="btn ghost" data-act="close">Cancelar</button><button type="button" class="btn start" data-act="saveroutine">${isNew ? 'Criar rotina' : 'Salvar'}</button></div>
+  </form>`);
+}
+function saveRoutine() {
+  const id = $('#routineForm').dataset.id, old = id ? S.routines.find(x => x.id === id) : null;
+  const f = { weekday: +$('#qWd').value, startDate: $('#qStart').value, endDate: $('#qEnd').value, items: readRows() };
+  const err = validateRoutine(f, !old || old.startDate !== f.startDate);
+  if (err) { toast(err); return; }
+  if (old) updateRoutine(old.id, f); else addRoutine(f);
+  closeModal(); toast(old ? 'Rotina atualizada. Vale a partir de hoje.' : 'Rotina criada.'); render();
+}
+function routineCardMeta(r) {
+  const its = byTime(r.items), more = its.length - 4;
+  return `<div class="card rcard"><div class="rtop"><div><div class="value" style="margin-top:0;font-size:1.25rem">${WD[r.weekday]}</div><div class="small muted">${its.length} atividade${its.length === 1 ? '' : 's'}</div></div>${ruleBadge(r)}</div>
+    <ul class="rprev mono">${its.slice(0, 4).map(x => `<li><span>${x.t}</span> ${esc(capAct(x.a))}</li>`).join('')}${more > 0 ? `<li class="muted">+ ${more}</li>` : ''}</ul>
+    <div class="small muted mono">${fmtBR(r.startDate)} a ${fmtBR(r.endDate)}</div>
+    <div class="row" style="margin-top:4px"><button class="btn sm" data-act="editroutine" data-id="${esc(r.id)}">Editar</button><button class="btn sm ghost danger" data-act="delroutine" data-id="${esc(r.id)}">Excluir</button></div></div>`;
+}
+
+// tela de um dia (calendário): igual à de Hoje, sem cronômetro
+function paintDay(ds) {
+  const i = info(ds), C = 2 * Math.PI * 112, p = i.goal > 0 ? Math.min(1, i.secs / i.goal) : 0;
+  $('#dClock').textContent = clock(i.secs * 1000); $('#dClock').classList.toggle('idle', i.secs < 1);
+  $('#dRing').setAttribute('stroke-dasharray', `${(p * C).toFixed(1)} ${C.toFixed(1)}`);
+  $('#dRingTxt').textContent = i.goal > 0 ? `${Math.round(p * 100)}% da meta` : 'Sem meta neste dia';
+  $('#dLost').textContent = hm(i.lost); $('#dBadge').innerHTML = badge(i.status);
+}
+function applyDay(ds, goalSec, secs) {
+  const t = today(), fut = ds > t, sec = fut ? 0 : secs, s = ensure(ds);
+  s.secs = sec; s.status = sec > 0 ? 'CONCLUIDO' : ds < t ? (goalSec > 0 ? 'NAO_ESTUDADO' : 'CONCLUIDO') : 'PENDENTE';
+  if (ds < t) { s.goal = goalSec / 3600; s.ov = true; s.fin = true; }
+  else if (s.ov || goalSec !== Math.round(resolveGoal(ds) * 3600)) { s.goal = goalSec / 3600; s.ov = true; }
+  else { s.goal = resolveGoal(ds); s.ov = false; }
+  save();
+}
+function viewDia() {
+  const ds = ui.day, d = parse(ds), t = today(), fut = ds > t, i = info(ds);
+  const dateTxt = `${WD[d.getDay()]}, ${d.getDate()} de ${MON[d.getMonth()]} de ${d.getFullYear()}`;
+  const C = 2 * Math.PI * 112, p = i.goal > 0 ? Math.min(1, i.secs / i.goal) : 0;
+  return `<div class="pagehead"><div><button class="link back" data-act="dayback">‹ ${ui.dayFrom === 'semana' ? 'Semana' : 'Calendário'}</button><p class="eyebrow">${fut ? 'Dia futuro' : 'Dia'}</p><h1>${dateTxt}</h1></div>
+    <div class="row"><button class="btn ghost sm" data-act="rstday" data-d="${ds}" data-label="Redefinir dia">Redefinir dia</button></div></div>
+  <div class="today">
+    <section class="card timer" aria-label="Cronômetro">
+      <div class="dial"><svg viewBox="0 0 260 260" aria-hidden="true"><circle class="track" cx="130" cy="130" r="112"/><circle class="prog" id="dRing" cx="130" cy="130" r="112" stroke-dasharray="${(p * C).toFixed(1)} ${C.toFixed(1)}"/></svg>
+        <div class="center"><div class="clock ${i.secs < 1 ? 'idle' : ''}" id="dClock">${clock(i.secs * 1000)}</div><div class="small muted" id="dRingTxt">${i.goal > 0 ? Math.round(p * 100) + '% da meta' : 'Sem meta neste dia'}</div></div></div>
+      <div class="controls">
+        <button class="btn start" disabled>${PLAY_HTML}</button>
+        <button class="btn done" disabled><svg viewBox="0 0 24 24"><path d="m9.5 17.5-5-5 1.9-1.9 3.1 3.1 8.1-8.1 1.9 1.9z"/></svg>Concluir</button>
+        <button class="btn ghost" disabled>${RESET_HTML}</button>
+      </div>
+      <p class="small muted" style="text-align:center">O cronômetro só funciona no dia de hoje.</p>
+    </section>
+    <div class="stack">
+      <div class="hoje-stats">
+        <div class="card"><div class="label">Meta do dia</div><div class="metarow">${hmIn('dg', i.goal)}</div></div>
+        <div class="card"><div class="label">Horas estudadas</div><div class="metarow">${hmIn('ds', fut ? 0 : i.secs, fut)}</div>${fut ? '<div class="small muted" style="margin-top:8px">Disponível a partir do próprio dia.</div>' : ''}</div>
+        <div class="card wide"><div class="label">Horas perdidas</div><div class="value tone-bad" id="dLost">${hm(i.lost)}</div>
+          <div style="margin-top:8px" id="dBadge">${badge(i.status)}</div></div>
+      </div>
+      <div class="card field"><label class="label" for="dnotes">Observações</label>
+        <textarea id="dnotes" placeholder="Matérias, tópicos, páginas lidas…">${esc(i.notes)}</textarea>
+        <div class="noterow"><span id="dnoteSt" class="mut"></span><button class="btn" id="dnoteSave" data-act="savedaynote" data-d="${ds}" disabled>Salvar</button></div></div>
+    </div>
+  </div>
+  ${routineCard(ds)}`;
+}
+
+const VIEWS = { hoje: viewHoje, semana: viewSemana, mes: viewMes, cal: viewCal, dia: viewDia, plan: viewPlan, metas: viewMetas, desemp: viewDesemp };
+function render() {
+  const out = !auth.session, g = $('#gate');
+  document.querySelector('.shell').hidden = out; g.hidden = !out;
+  if (out) { if (!g.firstChild) accountModal(); return; }
+  if (g.firstChild) g.innerHTML = '';
+  if (ui.view === 'dia' && (!ui.day || ui.day === today())) ui.view = ui.day ? 'hoje' : (ui.dayFrom || 'cal');
+  $('#nav').innerHTML = NAV.map(([k, n, sh]) => `<button data-act="nav" data-v="${k}" ${(ui.view === 'dia' ? (ui.dayFrom || 'cal') : ui.view) === k ? 'aria-current="page"' : ''}><svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg><span class="lf">${n}</span><span class="ls">${sh || n}</span>${k === 'conta' && auth.session ? (CLOUD ? `<i class="sdot ${cloud.status}" title="${esc(SYNC_TXT[cloud.status] || 'Conectado')}"></i>` : '<i class="on" title="Conectado"></i>') : ''}</button>`).join('');
+  $('#view').innerHTML = `<div class="view">${VIEWS[ui.view]()}</div>`;
+  if (ui.view === 'hoje') tick();
+}
+
+// ---------- modais ----------
+const hmIn = (id, sec, dis = false) => `<div class="hm"><input type="number" id="${id}h" min="0" max="99" value="${Math.floor(sec / 3600)}" aria-label="horas" ${dis ? 'disabled' : ''}><span>h</span><input type="number" id="${id}m" min="0" max="59" value="${Math.floor(sec % 3600 / 60)}" aria-label="minutos" ${dis ? 'disabled' : ''}><span>min</span></div>`;
+const readHM = id => Math.max(0, Math.floor(+$('#' + id + 'h').value || 0)) * 3600 + Math.min(59, Math.max(0, Math.floor(+$('#' + id + 'm').value || 0))) * 60;
+// ---------- conta (teste local: os usuários e os dados de cada um ficam só neste navegador/aparelho) ----------
+const OLD_TEST = ['teste', 'teste2']; // contas de teste antigas: removidas uma única vez
+const auth = { users: {}, session: curUser, cleaned: false, tab: 'in', sub: null };
+const b64 = u8 => btoa(String.fromCharCode(...u8)), unb64 = t => Uint8Array.from(atob(t), c => c.charCodeAt(0));
+async function hashPass(pass, saltB64) {
+  const salt = saltB64 ? unb64(saltB64) : crypto.getRandomValues(new Uint8Array(16));
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations: 120000, hash: 'SHA-256' }, key, 256);
+  return { salt: b64(salt), hash: b64(new Uint8Array(bits)) };
+}
+function authSave() {
+  try { localStorage.setItem(AUTH_KEY, JSON.stringify({ users: auth.users, cleaned: auth.cleaned })); } catch (e) {}
+  try { if (auth.session) sessionStorage.setItem(SESSION_KEY, auth.session); else sessionStorage.removeItem(SESSION_KEY); } catch (e) {}
+}
+async function authInit() {
+  try { const r = JSON.parse(localStorage.getItem(AUTH_KEY) || 'null'); if (r) { auth.users = r.users || {}; auth.cleaned = !!r.cleaned; } } catch (e) {}
+  if (!auth.cleaned) { // apaga teste e teste2 (conta e dados) uma única vez
+    for (const n of OLD_TEST) { delete auth.users[n]; try { localStorage.removeItem(LS + '_u_' + n); } catch (e) {} }
+    auth.cleaned = true; authSave();
+  }
+  if (auth.session && !auth.users[auth.session]) { auth.session = null; curUser = null; authSave(); switchData(); return; }
+  cloudStart(); render();
+}
+const authName = v => String(v || '').trim().toLowerCase();
+// troca os dados na tela para os do usuário atual (ou do modo sem conta)
+function switchData() {
+  curUser = auth.session; S = load(); rollover(); $('#gate').innerHTML = ''; cloudStart();
+  ui.weekOff = 0; ui.monOff = 0; ui.calY = now0.getFullYear(); ui.calM = now0.getMonth(); curDay = today();
+  render();
+}
+function authTab(t) { auth.tab = t; accountModal(); }
+const EYE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+const authField = (id, label, ac, hint) => `<div class="field"><label class="label" for="${id}">${label}</label><div class="pw"><input type="password" id="${id}" autocomplete="${ac}"><button type="button" class="peek" data-act="authpeek" data-for="${id}" aria-label="Mostrar ou ocultar a senha" title="Mostrar/ocultar">${EYE}</button></div>${hint ? `<span class="small muted">${hint}</span>` : ''}</div>`;
+const CHEV = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>';
+const authHead = (eyebrow, title, sub) => `<div class="ahead"><div><p class="eyebrow">${eyebrow}</p><h2>${title}</h2>${sub ? `<p class="small muted">${sub}</p>` : ''}</div><button type="button" class="iconbtn" data-act="close" aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>`;
+function accountModal(msg) {
+  const out = auth.session, err = `<div class="err" id="aErr" role="alert">${esc(msg || '')}</div>`;
+  const back = `<button type="button" class="btn ghost" data-act="authsub" data-s="">Voltar</button>`;
+  if (out) {
+    const user = `<div class="who"><span class="av" aria-hidden="true">${esc(out.charAt(0).toUpperCase())}</span><div><strong>${esc(out)}</strong><span class="small" ${CLOUD ? 'id="syncLine"' : ''}>${CLOUD ? syncLine() : '<i class="dot"></i>Conectado'}</span></div></div>`;
+    if (auth.sub === 'pass') {
+      openModal(`<div class="auth stack" id="authForm">${authHead('Conta', 'Alterar senha', esc(out))}
+        ${authField('aOld', 'Senha atual', 'current-password')}${authField('aNew', 'Nova senha', 'new-password', 'Mínimo de 6 caracteres.')}${authField('aNew2', 'Repetir a nova senha', 'new-password')}${err}
+        <div class="foot">${back}<button type="button" class="btn start" data-act="authgo">Salvar senha</button></div></div>`);
+    } else if (auth.sub === 'del') {
+      openModal(`<div class="auth stack" id="authForm">${authHead('Conta', 'Excluir conta', esc(out))}
+        <div class="warnbox">Todos os estudos, metas e observações desta conta serão apagados. Isso não pode ser desfeito.</div>
+        ${authField('aOld', 'Digite sua senha para confirmar', 'current-password')}${err}
+        <div class="foot">${back}<button type="button" class="btn stop" data-act="authgo">Excluir conta</button></div></div>`);
+    } else {
+      openModal(`<div class="auth stack">${authHead('Conta', 'Minha conta')}
+        ${user}
+        <div class="rows">
+          ${CLOUD ? '<button type="button" class="row" data-act="syncnow"><span><strong>Sincronizar agora</strong><small>Envia e busca as alterações</small></span>' + CHEV + '</button>' : ''}
+          <button type="button" class="row" data-act="authsub" data-s="pass"><span><strong>Alterar senha</strong><small>Troque a senha de acesso</small></span>${CHEV}</button>
+          <button type="button" class="row" data-act="authout"><span><strong>Sair da conta</strong><small>Seus dados ficam salvos</small></span>${CHEV}</button>
+        </div>
+        <button type="button" class="row danger" data-act="authsub" data-s="del"><span><strong>Excluir conta</strong><small>Apaga a conta e todos os dados dela</small></span>${CHEV}</button>
+        <div class="foot"><button type="button" class="btn ghost" data-act="close">Fechar</button></div></div>`);
+    }
+    return;
+  }
+  const isIn = auth.tab === 'in';
+  const g = $('#gate'); closeModal();
+  g.innerHTML = `<div class="brand"><i></i><div>TimeTracker<small>Study Planner</small></div></div>
+  <div class="gcard"><div class="auth stack" id="authForm"><div class="ahead"><div><p class="eyebrow">Conta</p><h2>${isIn ? 'Entrar na conta' : 'Criar conta'}</h2><p class="small muted">${isIn ? 'Entre para acessar seus estudos e metas.' : (CLOUD ? 'Use seu e-mail e uma senha. A conta funciona no PC e no celular.' : 'Escolha um usuário e uma senha.')}</p></div></div>
+    <div class="field"><label class="label" for="aUser">${CLOUD ? 'E-mail' : 'Usuário'}</label><input type="${CLOUD ? 'email' : 'text'}" id="aUser" autocomplete="${CLOUD ? 'email' : 'username'}" autocapitalize="none" spellcheck="false" ${isIn ? '' : `placeholder="${CLOUD ? 'voce@exemplo.com' : 'ex.: maria'}"`}>${isIn || CLOUD ? '' : '<span class="small muted">De 3 a 20 letras, números, ponto, hífen ou _.</span>'}</div>
+    ${authField('aPass', 'Senha', isIn ? 'current-password' : 'new-password', isIn ? '' : 'Mínimo de 6 caracteres.')}
+    ${isIn ? '' : authField('aPass2', 'Repetir a senha', 'new-password')}
+    ${err}
+    <button type="button" class="btn start wide" data-act="authgo">${isIn ? 'Entrar' : 'Criar conta'}</button>
+    <p class="swap small">${isIn ? 'Ainda não tem conta?' : 'Já tem conta?'} <button type="button" class="link" data-act="authtab" data-t="${isIn ? 'new' : 'in'}">${isIn ? 'Criar conta' : 'Entrar'}</button></p></div></div>`;
+  const f = $('#aUser'); if (f) f.focus();
+}
+let authBusy = false;
+async function authGo() {
+  if (authBusy) return;
+  const btn = document.querySelector('#authForm [data-act="authgo"]'), label = btn && btn.textContent;
+  authBusy = true; if (btn) { btn.disabled = true; btn.textContent = 'Aguarde…'; }
+  try { await authRun(); } finally { authBusy = false; if (btn && btn.isConnected) { btn.disabled = false; btn.textContent = label; } }
+}
+async function authRun() {
+  const err = m => { const e = $('#aErr'); if (e) e.textContent = m; };
+  if (!(window.crypto && crypto.subtle)) { err('Este navegador não permite usar contas aqui.'); return; }
+  if (auth.session) { // já conectado: alterar senha ou excluir conta
+    const u = auth.users[auth.session], old = $('#aOld').value;
+    if (!u || (await hashPass(old, u.salt)).hash !== u.hash) { err('Senha atual incorreta.'); return; }
+    if (auth.sub === 'pass') {
+      const n = $('#aNew').value;
+      if (n.length < 6) { err('A nova senha precisa ter ao menos 6 caracteres.'); return; }
+      if (n !== $('#aNew2').value) { err('As senhas não são iguais.'); return; }
+      if (CLOUD) {
+        try {
+          const r = await cloudFetch('/auth/v1/user', { method: 'PUT', body: JSON.stringify({ password: n }) }, await cloudToken());
+          if (!r.ok) { err(cloudMsg(await cloudErr(r))); return; }
+        } catch (e) { err('Trocar a senha exige internet.'); return; }
+      }
+      auth.users[auth.session] = await hashPass(n); authSave(); auth.sub = null; closeModal(); toast('Senha alterada.');
+    } else if (auth.sub === 'del') {
+      const name = auth.session;
+      if (CLOUD) {
+        try {
+          const r = await cloudFetch('/rest/v1/rpc/delete_my_account', { method: 'POST', body: '{}' }, await cloudToken());
+          if (!r.ok) { err('Não foi possível excluir na nuvem.'); return; }
+        } catch (e) { err('Excluir a conta exige internet.'); return; }
+        try { localStorage.removeItem(SYNC_KEY + name); } catch (e) {}
+        cloudStop();
+      }
+      delete auth.users[name]; auth.session = null; authSave();
+      try { localStorage.removeItem(LS + '_u_' + name); } catch (e) {}
+      auth.sub = null; auth.tab = 'in'; closeModal(); switchData(); toast('Conta excluída.');
+    }
+    return;
+  }
+  const name = authName($('#aUser').value), pass = $('#aPass').value;
+  if (auth.tab === 'in') {
+    if (CLOUD) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(name)) { err('Digite um e-mail válido.'); return; }
+      const res = await cloudLogin(name, pass);
+      if (res.error) { err(res.error); return; }
+      if (res.ok) { auth.users[name] = await hashPass(pass); cloud.pending = res.j; }
+      else {
+        const u0 = auth.users[name];
+        if (!u0) { err('Sem internet: no primeiro acesso neste aparelho é preciso estar online.'); return; }
+        if ((await hashPass(pass, u0.salt)).hash !== u0.hash) { err('E-mail ou senha incorretos.'); return; }
+      }
+    } else {
+      const u = auth.users[name];
+      if (!u) { err('Usuário ou senha incorretos.'); return; }
+      const h = await hashPass(pass, u.salt);
+      if (h.hash !== u.hash) { err('Usuário ou senha incorretos.'); return; }
+    }
+    auth.session = name; auth.tab = 'in'; authSave(); closeModal(); switchData(); toast('Você entrou como ' + name + '.');
+  } else {
+    if (CLOUD ? !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(name) : !/^[a-z0-9_.-]{3,20}$/.test(name)) { err(CLOUD ? 'Digite um e-mail válido.' : 'Usuário: de 3 a 20 letras, números, ponto, hífen ou _.'); return; }
+    if (pass.length < 6) { err('A senha precisa ter ao menos 6 caracteres.'); return; }
+    if (pass !== $('#aPass2').value) { err('As senhas não são iguais.'); return; }
+    if (CLOUD) { const r = await cloudSignup(name, pass); if (r.error) { err(r.error); return; } }
+    else {
+      if (auth.users[name]) { err('Esse usuário já existe.'); return; }
+      auth.users[name] = await hashPass(pass);
+    }
+    auth.tab = 'in'; authSave(); // não entra sozinho: volta para a tela de login
+    accountModal(); const u = $('#aUser'); if (u) u.value = name;
+    const e2 = $('#aErr'); if (e2) { e2.textContent = 'Conta criada! Agora entre com sua senha.'; e2.classList.add('ok'); }
+    const pw = $('#aPass'); if (pw) pw.focus();
+  }
+}
+async function authOut() { if (CLOUD && cloud.on) { try { await Promise.race([cloudSync(), new Promise(r => setTimeout(r, 2500))]); } catch (e) {} } cloudStop(); auth.session = null; auth.sub = null; auth.tab = 'in'; authSave(); closeModal(); switchData(); toast('Você saiu da conta.'); }
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.closest && e.target.closest('#authForm')) { e.preventDefault(); authGo(); } });
+document.addEventListener('keydown', e => { // Enter no nome da atividade = "Adicionar atividade"
+  if (e.key === 'Enter' && e.target.classList && e.target.classList.contains('ra') && e.target.closest('#rrows')) { e.preventDefault(); e.target.value = capAct(e.target.value); addRrow(); }
+});
+document.addEventListener('keydown', e => {
+  const c = e.target.closest && e.target.closest('[role="button"][data-act]');
+  if (c && c === e.target && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); c.click(); return; }
+});
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' || !e.target.closest) return;
+  if (e.target.closest('#taskForm') && e.target.tagName === 'INPUT') { e.preventDefault(); saveTask(); }
+  else if (e.target.closest('#cellForm')) { e.preventDefault(); saveCell(false); }
+});
+
+function openModal(html) {
+  $('#modal').innerHTML = `<div class="scrim" data-act="scrim"><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`;
+  const f = $('#modal input, #modal select, #modal textarea'); if (f) f.focus();
+}
+const closeModal = () => { $('#modal').innerHTML = ''; };
+
+function dayModal(ds) {
+  const i = info(ds), d = parse(ds), fut = ds > today();
+  const rr = winningRule(ds), rs = rr ? Math.round(rr.hours * 3600) : 0, showRule = ds >= today() && rr && rs !== i.goal;
+  openModal(`<div><p class="eyebrow">Editar dia</p><h2 style="font-size:1.25rem;margin-top:4px">${WD[d.getDay()]}, ${fmtBR(ds)}</h2></div>
+  <form id="dayForm" data-d="${ds}" class="stack" onsubmit="return false">
+    <div class="pair"><div class="field"><span class="label">Meta do dia</span>${hmIn('g', i.goal)}</div>
+    <div class="field"><span class="label">Horas estudadas</span>${hmIn('s', fut ? 0 : i.secs, fut)}</div></div>
+    ${showRule ? `<p class="small muted"><button type="button" class="link" data-act="fillrule" data-s="${rs}">Usar a meta recorrente (${hm(rs)})</button></p>` : ''}
+    ${fut ? '<p class="small muted">Dia futuro: as horas estudadas ficam disponíveis a partir do próprio dia.</p>' : ''}
+    <div class="stats3 mstats"><div class="card"><div class="label">Perdidas</div><div class="value tone-bad" id="mLost" style="font-size:1.2rem">${hm(i.lost)}</div></div>
+      <div class="card"><div class="label">Desempenho</div><div class="value" id="mPerf" style="font-size:1.2rem">${pct(i.perf)}</div></div>
+      <div class="card"><div class="label">Status</div><div style="margin-top:10px" id="mSt">${badge(i.status)}</div></div></div>
+    <div class="field"><label class="label" for="mNotes">Observações</label><textarea id="mNotes">${esc(i.notes)}</textarea></div>
+    <div class="foot"><button type="button" class="btn ghost" data-act="rstday" data-label="Redefinir dia" style="margin-right:auto">Redefinir dia</button><button type="button" class="btn ghost" data-act="close">Cancelar</button><button type="button" class="btn start" data-act="saveday">Salvar</button></div>
+  </form>`);
+}
+function modalStatus(ds) {
+  const t = today(), goal = readHM('g'), secs = ds > t ? 0 : readHM('s'), nao = $('#mNao') && $('#mNao').checked;
+  let st;
+  if (secs > 0) st = 'CONCLUIDO';
+  else if (ds < t) st = goal > 0 ? 'NAO_ESTUDADO' : 'CONCLUIDO';
+  else st = nao ? 'NAO_ESTUDADO' : 'PENDENTE';
+  return { goal, secs, st, ...calc(goal, secs, st) };
+}
+function saveDay() {
+  const ds = $('#dayForm').dataset.d, m = modalStatus(ds), s = ensure(ds);
+  s.secs = m.secs; s.status = m.st; s.notes = $('#mNotes').value;
+  if (ds < today()) { s.goal = m.goal / 3600; s.ov = true; s.fin = true; }
+  else if (s.ov || m.goal !== Math.round(resolveGoal(ds) * 3600)) { s.goal = m.goal / 3600; s.ov = true; } // meta digitada à mão vale mais que a recorrente
+  else { s.goal = resolveGoal(ds); s.ov = false; }
+  save(); closeModal(); toast('Dia atualizado. Métricas recalculadas.'); render();
+}
+
+const NTH = [[1, 'Primeira'], [2, 'Segunda'], [3, 'Terceira'], [4, 'Quarta'], [-1, 'Última']];
+const RTYPES = [['DAILY', 'Todos os dias'], ['WEEKLY', 'Semanal'], ['MONTHLY_DATE', 'Mensal, por data'], ['MONTHLY_RELATIVE', 'Mensal, relativo'], ['WORKDAYS', 'Dias úteis (seg a sex)'], ['CUSTOM', 'Personalizado']];
+const opts = (list, sel) => list.map(([v, l]) => `<option value="${v}" ${String(v) === String(sel) ? 'selected' : ''}>${l}</option>`).join('');
+function ruleModal(g) {
+  const t = today(), td = parse(t), isNew = !g;
+  const type = g ? g.type : 'WORKDAYS', sec = g ? Math.round(g.hours * 3600) : 7200;
+  const start = g ? g.startDate : t, end = g ? (g.endDate || addDays(addYears(start, 1), -1)) : addDays(addYears(t, 1), -1);
+  const sd = parse(start), wd = g ? (g.weekday ?? sd.getDay()) : td.getDay();
+  const n0 = g ? (g.nth ?? Math.ceil(sd.getDate() / 7)) : Math.ceil(td.getDate() / 7), nth = n0 >= 5 ? -1 : n0;
+  const dom = g ? (g.dom ?? sd.getDate()) : td.getDate();
+  const cd = g && g.customDays && g.customDays.length ? g.customDays : [1, 2, 3, 4, 5];
+  const types = type === 'NONE' ? [['NONE', 'Somente um dia'], ...RTYPES] : RTYPES;
+  openModal(`<div><p class="eyebrow">${isNew ? 'Nova meta' : 'Editar meta'}</p><h2 style="font-size:1.25rem;margin-top:4px">Meta recorrente</h2></div>
+  <form id="ruleForm" data-id="${g ? esc(String(g.id)) : ''}" class="stack" onsubmit="return false">
+    <div class="field"><span class="label">Meta por dia</span>${hmIn('rg', sec)}</div>
+    <div class="field"><label class="label" for="rType">Repetir</label><select id="rType">${opts(types, type)}</select><span class="small tone-acc" id="rDesc"></span></div>
+    <div class="field" id="fWd"><label class="label" for="rWd">Dia da semana</label><select id="rWd">${opts(WDN.map((n, i) => [i, n.charAt(0).toUpperCase() + n.slice(1)]), wd)}</select></div>
+    <div class="field" id="fNth"><label class="label" for="rNth">Qual deles no mês</label><select id="rNth">${opts(NTH, nth)}</select></div>
+    <div class="field" id="fDom"><label class="label" for="rDom">Dia do mês</label><input type="text" id="rDom" inputmode="numeric" autocomplete="off" value="${dom}" aria-describedby="rDomHint"><div class="small" id="rDomHint" style="color:var(--warn-fg)" hidden>Preencha com um número entre 1 e 31.</div></div>
+    <div class="checks" id="rCustom">${WDs.map((w, k) => `<label><input type="checkbox" value="${k}" ${cd.includes(k) ? 'checked' : ''}>${w}</label>`).join('')}</div>
+    <div class="pair">
+      <div class="field"><label class="label" for="rStart">Data de início</label><input type="date" id="rStart" value="${start}" min="${CAL_MIN}" max="${maxDate()}"></div>
+      <div class="field"><label class="label" for="rEnd">Data de término</label><input type="date" id="rEnd" value="${end}" min="${CAL_MIN}" max="${maxDate()}"></div>
+    </div>
+    <p class="small muted">O período pode ter no máximo 2 anos.</p>
+    <p class="small tone-warn" id="rWarn"></p>
+    ${isNew ? '' : '<p class="small muted">As mudanças valem a partir de hoje. Os dias que já passaram mantêm a meta que tinham.</p>'}
+    <div class="foot"><button type="button" class="btn ghost" data-act="close">Cancelar</button><button type="button" class="btn start" data-act="saverule">${isNew ? 'Criar meta' : 'Salvar'}</button></div>
+  </form>`);
+  ruleSync();
+}
+function readRule() {
+  const type = $('#rType').value;
+  const f = { hours: readHM('rg') / 3600, type, startDate: $('#rStart').value || today(), endDate: $('#rEnd').value || today() };
+  if (type === 'CUSTOM') f.customDays = [...document.querySelectorAll('#rCustom input:checked')].map(c => +c.value);
+  if (type === 'WEEKLY' || type === 'MONTHLY_RELATIVE') f.weekday = +$('#rWd').value;
+  if (type === 'MONTHLY_RELATIVE') f.nth = +$('#rNth').value;
+  if (type === 'MONTHLY_DATE') f.dom = Math.floor(+$('#rDom').value || 0);
+  return f;
+}
+function ruleSync() {
+  const type = $('#rType').value, start = $('#rStart').value;
+  $('#fWd').hidden = !(type === 'WEEKLY' || type === 'MONTHLY_RELATIVE');
+  $('#fNth').hidden = type !== 'MONTHLY_RELATIVE';
+  $('#fDom').hidden = type !== 'MONTHLY_DATE';
+  $('#rCustom').hidden = type !== 'CUSTOM';
+  $('#rDesc').textContent = ruleDesc(readRule()); // não mexe nos campos de data enquanto a pessoa digita
+  const isNew = !$('#ruleForm').dataset.id;
+  $('#rWarn').textContent = isNew && start >= '1900-01-01' && start < today() ? 'Os dias anteriores a hoje também recebem esta meta. Os que não tiverem estudo contam como não estudados.' : '';
+}
+function saveRule() {
+  const id = $('#ruleForm').dataset.id;
+  if (!$('#rStart').value || !$('#rEnd').value) { toast('Preencha as datas de início e de término.'); return; }
+  const f = readRule(), old = id ? S.goals.find(x => String(x.id) === id) : null;
+  const err = validateRule(f, !old || old.startDate !== f.startDate);
+  if (err) { toast(err); return; }
+  if (old) updateRule(old.id, f); else addRule(f);
+  closeModal(); toast(old ? 'Meta atualizada. Vale a partir de hoje.' : 'Meta criada.'); render();
+}
+
+function dataModal() {
+  openModal(`<div><p class="eyebrow">Dados</p><h2 style="font-size:1.25rem;margin-top:4px">Backup dos registros</h2></div>
+  <div class="stack"><p class="small muted">Os registros ficam salvos neste navegador. Copie o código abaixo para guardar um backup ou levar para outro aparelho.</p>
+  <div class="field"><label class="label" for="exp">Exportar</label><textarea id="exp" readonly>${esc(JSON.stringify(S))}</textarea></div>
+  <div class="row"><button class="btn sm" data-act="copy">Copiar</button></div>
+  <div class="field"><label class="label" for="imp">Importar</label><textarea id="imp" placeholder="Cole aqui o código do backup"></textarea></div>
+  <div class="foot"><button class="btn ghost" data-act="close">Fechar</button><button class="btn danger" id="impBtn" data-act="import">Importar e substituir</button></div></div>`);
+}
+
+// ---------- eventos ----------
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const a = b.dataset.act;
+  if (a === 'scrim') { if (e.target === b) closeModal(); return; }
+  const go = () => render();
+  switch (a) {
+    case 'menu': toggleMenu(); break;
+    case 'nav': closeMenu(); if (b.dataset.v === 'conta') { auth.sub = null; auth.tab = 'in'; accountModal(); break; } ui.view = b.dataset.v; go(); break;
+    case 'authtab': authTab(b.dataset.t); break;
+    case 'authgo': authGo(); break;
+    case 'authpeek': { const i = document.getElementById(b.dataset.for); if (i) { i.type = i.type === 'password' ? 'text' : 'password'; b.classList.toggle('on', i.type === 'text'); } break; }
+    case 'authsub': auth.sub = b.dataset.s || null; accountModal(); break;
+    case 'authout': authOut(); break;
+    case 'syncnow': cloudSync(); toast('Sincronizando…'); break;
+    case 'toggle': S.timer.running ? timerPause() : timerStart(); break;
+    case 'done': timerDone(); break;
+    case 'rstall': openModal(`<div><h2 style="font-size:1.25rem">Redefinir tudo</h2></div>
+      <p class="muted" style="margin:0">Se você confirmar, todas as informações salvas até então serão excluídas. Deseja prosseguir?</p>
+      <div class="foot"><button type="button" class="btn ghost" data-act="close">Cancelar</button><button type="button" class="btn stop" data-act="rstallok">Prosseguir</button></div>`); break;
+    case 'rstallok': resetAll(); closeModal(); toast('Todos os registros foram redefinidos.'); render(); break;
+    case 'rstday': case 'rstmonth': {
+      if (b.dataset.armed !== '1') { // confirmação em dois toques
+        document.querySelectorAll('[data-armed="1"]').forEach(x => { x.dataset.armed = ''; if (x.dataset.label) x.textContent = x.dataset.label; x.style.width = ''; });
+        b.style.width = b.offsetWidth + 'px'; b.dataset.armed = '1'; b.textContent = 'Confirmar'; // mantém o tamanho do botão
+        clearTimeout(window._xt); window._xt = setTimeout(() => { b.dataset.armed = ''; b.textContent = b.dataset.label; b.style.width = ''; }, 4000);
+        break;
+      }
+      clearTimeout(window._xt);
+      if (a === 'rstday') { const d = b.dataset.d || $('#dayForm').dataset.d; rollover(); resetDay(d); save(); closeModal(); toast('Dia redefinido.'); }
+      else { resetMonth(ui.calY, ui.calM); toast('Mês redefinido.'); }
+      render(); break;
+    }
+    case 'savenote': { const t = $('#notes'); ensure(today()).notes = t.value; save(); $('#noteSave').disabled = true; $('#noteSave').textContent = 'Salvo'; $('#noteSt').textContent = 'Alterações salvas!'; $('#noteSt').classList.add('ok'); break; }
+    case 'reset': {
+      if (info(today()).raw + elapsed() / 1000 < 1) break;
+      if (b.dataset.armed !== '1') {
+        b.style.width = b.offsetWidth + 'px'; b.dataset.armed = '1'; b.textContent = 'Confirmar';
+        clearTimeout(window._rt); window._rt = setTimeout(() => { b.dataset.armed = ''; b.innerHTML = RESET_HTML; b.style.width = ''; }, 3000);
+        break;
+      }
+      clearTimeout(window._rt); timerReset(); { const z = ensure(today()); z.secs = 0; z.status = 'PENDENTE'; } save(); toast('Cronômetro zerado.'); render(); break;
+    }
+    case 'newrule': ruleModal(null); break;
+    case 'newroutine': routineModal(null); break;
+    case 'editroutine': { const r = S.routines.find(x => x.id === b.dataset.id); if (r) routineModal(r); break; }
+    case 'saveroutine': saveRoutine(); break;
+    case 'delroutine':
+      if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Confirmar exclusão'; clearTimeout(b._t); b._t = setTimeout(() => { b.dataset.armed = ''; b.textContent = 'Excluir'; }, 3500); break; }
+      deleteRoutine(b.dataset.id); toast('Rotina excluída. Os dias que já passaram mantêm a rotina que tinham.'); render(); break;
+    case 'editday': dayRoutineModal(b.dataset.d); break;
+    case 'rtoggle': ui.routineOpen = !ui.routineOpen; repaintRoutine(b.dataset.d); break;
+    case 'savedayr': saveDayR(); break;
+    case 'dayrscope': {
+      const pd = pendingDayR; if (!pd) break;
+      if (b.dataset.s === 'fwd') applyRoutineFrom(pd.ds, pd.items); else saveDayRoutine(pd.ds, pd.items);
+      pendingDayR = null; closeModal(); toast(b.dataset.s === 'fwd' ? 'Rotina atualizada para este dia e os próximos.' : 'Rotina do dia salva.'); refreshDay(pd.ds); break;
+    }
+    case 'scopeback': { const pd = pendingDayR; pendingDayR = null; if (pd) dayRoutineModal(pd.ds, pd.items); else closeModal(); break; }
+    case 'notemodal': noteModal(b.dataset.d, b.dataset.id); break;
+    case 'savernote': { const f = $('#noteForm'); setNote(f.dataset.d, f.dataset.id, $('#rnote').value); closeModal(); toast('Observação salva.'); repaintRoutine(f.dataset.d); break; }
+    case 'restoreday': { const ds = $('#dayRForm').dataset.d; restoreDayRoutine(ds); closeModal(); toast('Voltou à rotina recorrente.'); refreshDay(ds); break; }
+    case 'rrowadd': addRrow(); break;
+    case 'rrowdel': b.closest('.rrow').remove(); break;
+    case 'mark': {
+      const ds = b.dataset.d, id = b.dataset.id, v = b.dataset.v === '1', cur = (dayRoutine(ds).items.find(x => x.id === id) || {}).m;
+      setMark(ds, id, cur === v ? null : v); repaintRoutine(ds); break;
+    }
+    case 'dayback': ui.view = ui.dayFrom || 'cal'; go(); break;
+    case 'savedaynote': { const ds = b.dataset.d; ensure(ds).notes = $('#dnotes').value; save(); b.disabled = true; b.textContent = 'Salvo'; $('#dnoteSt').textContent = 'Alterações salvas!'; $('#dnoteSt').classList.add('ok'); break; }
+    case 'newtask': taskModal(null); break;
+    case 'edittask': { const t = S.tasks.find(x => x.id === b.dataset.id); if (t) taskModal(t); break; }
+    case 'savetask': saveTask(); break;
+    case 'pcell': cellModal(b.dataset.id, +b.dataset.k); break;
+    case 'savecell': saveCell(false); break;
+    case 'clearcell': saveCell(true); break;
+    case 'planf': ui.planF = b.dataset.f; go(); break;
+    case 'deltask':
+      if (b.dataset.armed !== '1') { b.style.width = b.offsetWidth + 'px'; b.dataset.armed = '1'; b.textContent = 'Confirmar'; clearTimeout(b._t); b._t = setTimeout(() => { b.dataset.armed = ''; b.textContent = 'Excluir'; b.style.width = ''; }, 3000); break; }
+      deleteTask(b.dataset.id); toast('Tarefa excluída.'); go(); break;
+    case 'editrule': { const g = S.goals.find(x => String(x.id) === b.dataset.id); if (g) ruleModal(g); break; }
+    case 'saverule': saveRule(); break;
+    case 'delrule': {
+      if (b.dataset.armed !== '1') {
+        b.dataset.armed = '1'; b.textContent = 'Confirmar exclusão';
+        clearTimeout(window._dt); window._dt = setTimeout(() => { b.dataset.armed = ''; b.textContent = 'Excluir'; }, 3500);
+        break;
+      }
+      clearTimeout(window._dt); deleteRule(b.dataset.id); toast('Meta excluída. Os dias que já passaram mantêm a meta que tinham.'); render(); break;
+    }
+    case 'unov': { const u = ensure(today()); u.ov = false; u.goal = resolveGoal(today()); save(); render(); break; }
+    case 'fillrule': {
+      const sec = +b.dataset.s; $('#gh').value = Math.floor(sec / 3600); $('#gm').value = Math.floor(sec % 3600 / 60);
+      $('#gh').dispatchEvent(new Event('input', { bubbles: true })); b.parentElement.remove(); break;
+    }
+    case 'data': dataModal(); break;
+    case 'close': closeModal(); break;
+    case 'wprev': ui.weekOff = clamp(ui.weekOff - 1, weekLim()); go(); break;
+    case 'wnext': ui.weekOff = clamp(ui.weekOff + 1, weekLim()); go(); break;
+    case 'wnow': ui.weekOff = 0; go(); break;
+    case 'mprev': ui.monOff = clamp(ui.monOff - 1, monLim()); go(); break;
+    case 'mnext': ui.monOff = clamp(ui.monOff + 1, monLim()); go(); break;
+    case 'mnow': ui.monOff = 0; go(); break;
+    case 'cprev': calGo(ui.calY, ui.calM - 1); go(); break;
+    case 'cnext': calGo(ui.calY, ui.calM + 1); go(); break;
+    case 'cyprev': calGo(ui.calY - 1, ui.calM); go(); break;
+    case 'cynext': calGo(ui.calY + 1, ui.calM); go(); break;
+    case 'cnow': ui.calY = now0.getFullYear(); ui.calM = now0.getMonth(); go(); break;
+    case 'day': ui.dayFrom = ui.view === 'semana' ? 'semana' : 'cal'; if (b.dataset.d === today()) ui.view = 'hoje'; else { ui.day = b.dataset.d; ui.view = 'dia'; } go(); break;
+    case 'saveday': saveDay(); break;
+    case 'copy': {
+      const ta = $('#exp'); ta.select();
+      (navigator.clipboard ? navigator.clipboard.writeText(ta.value) : Promise.reject()).then(() => toast('Backup copiado.'), () => toast('Texto selecionado. Use Ctrl+C para copiar.'));
+      break;
+    }
+    case 'import': {
+      if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Confirmar substituição'; break; }
+      try {
+        const o = JSON.parse($('#imp').value);
+        if (!o || typeof o.sessions !== 'object' || !Array.isArray(o.goals)) throw 0;
+        S = { sessions: o.sessions, goals: o.goals, tasks: normTasks(o.tasks), routines: Array.isArray(o.routines) ? o.routines : [], rdays: o.rdays && typeof o.rdays === 'object' ? o.rdays : {}, timer: o.timer || blank().timer, closed: o.closed || null }; save(); rollover(); closeModal(); toast('Dados importados.'); render();
+      } catch (er) { toast('Código inválido. Cole o backup completo.'); b.dataset.armed = ''; b.textContent = 'Importar e substituir'; }
+    }
+  }
+});
+let domRej = false, domT;
+function domCheck(rejected) { // campo "dia do mês": só 1 a 31
+  const el = $('#rDom'); if (!el) return;
+  if (rejected) { domRej = true; clearTimeout(domT); domT = setTimeout(() => { domRej = false; domCheck(); }, 2500); }
+  const v = el.value, bad = domRej || v === '' || +v < 1 || +v > 31;
+  $('#rDomHint').hidden = !bad;
+  el.setCustomValidity(v === '' || +v < 1 || +v > 31 ? 'Preencha com um número entre 1 e 31.' : '');
+}
+document.addEventListener('beforeinput', e => {
+  if (e.target.id !== 'rDom' || !e.data) return;
+  if (/\D/.test(e.data)) { e.preventDefault(); domCheck(true); }
+});
+let noteT;
+document.addEventListener('input', e => {
+  const id = e.target.id;
+  if (id === 'rDom') { // só 1 a 31: o que não vale volta para o valor anterior
+    const el = e.target, raw = el.value, c = raw.replace(/\D/g, '');
+    if (c !== '' && (c.length > 2 || +c < 1 || +c > 31)) { el.value = el.dataset.prev || ''; domCheck(true); }
+    else { el.value = c; el.dataset.prev = c; domCheck(c !== raw); }
+  }
+  if (id === 'notes') { const b = $('#noteSave'); if (b) { $('#noteSt').classList.remove('ok'); b.disabled = e.target.value === (S.sessions[today()] ? S.sessions[today()].notes : ''); b.textContent = 'Salvar'; $('#noteSt').textContent = b.disabled ? '' : 'Alterações não salvas'; } }
+  if (e.target.closest('#dayForm')) {
+    const m = modalStatus($('#dayForm').dataset.d);
+    $('#mLost').textContent = hm(m.lost); $('#mPerf').textContent = pct(m.perf); $('#mSt').innerHTML = badge(m.st);
+  }
+  if (e.target.classList && (e.target.classList.contains('rh') || e.target.classList.contains('rm'))) { // hh: 00–23, mm: 00–59, só números
+    const el = e.target, isH = el.classList.contains('rh'), max = isH ? 23 : 59;
+    let c = el.value.replace(/\D/g, '').slice(0, 2); if (c !== '' && +c > max) c = el.dataset.prev || '';
+    el.value = c; el.dataset.prev = c;
+    if (isH && c.length === 2) el.closest('.tm').querySelector('.rm').focus();
+  }
+  if (id === 'dnotes') { const b = $('#dnoteSave'); if (b) { $('#dnoteSt').classList.remove('ok'); b.disabled = e.target.value === (S.sessions[ui.day] ? S.sessions[ui.day].notes : ''); b.textContent = 'Salvar'; $('#dnoteSt').textContent = b.disabled ? '' : 'Alterações não salvas'; } }
+  if (id === 'tTrail' || id === 'tAula') e.target.value = e.target.value.replace(/\D/g, '').slice(0, 3);
+  if (id === 'tD0') taskHints();
+  if (e.target.closest('#ruleForm')) ruleSync();
+});
+document.addEventListener('change', e => {
+  const id = e.target.id;
+  if (['dgh', 'dgm', 'dsh', 'dsm'].includes(id) && ui.view === 'dia') {
+    const ds = ui.day, g = Math.min(86400, readHM('dg')), sc = Math.min(86400, readHM('ds'));
+    $('#dgh').value = Math.floor(g / 3600); $('#dgm').value = Math.floor(g % 3600 / 60);
+    if (!$('#dsh').disabled) { $('#dsh').value = Math.floor(sc / 3600); $('#dsm').value = Math.floor(sc % 3600 / 60); }
+    applyDay(ds, g, sc); paintDay(ds); toast('Dia atualizado.');
+  }
+  if (id === 'mth' || id === 'mtm') {
+    const t = today(), sec = Math.min(86400, readHM('mt')), s = ensure(t);
+    s.ov = Math.round(resolveGoal(t) * 3600) !== sec; s.goal = sec / 3600; save(); // igual à recorrente = volta a acompanhá-la
+    $('#mth').value = Math.floor(sec / 3600); $('#mtm').value = Math.floor(sec % 3600 / 60);
+    tick(); toast('Meta de hoje atualizada.');
+  }
+  if (['r1a', 'r1b', 'r2a', 'r2b'].includes(id)) {
+    const a = $('#' + id.slice(0, 2) + 'a').value, b = $('#' + id.slice(0, 2) + 'b').value;
+    if (a >= '1900-01-01' && b >= '1900-01-01') { ui[id.slice(0, 2)] = [a, b]; $('#cmpRes').innerHTML = custom(); }
+  }
+  if (e.target.closest('#ruleForm')) ruleSync();
+});
+// Ao sair do campo de início, ajusta o término só se ele ficou inválido.
+document.addEventListener('focusout', e => {
+  if (e.target.classList && e.target.classList.contains('ra') && e.target.closest('#rrows')) e.target.value = capAct(e.target.value);
+  if (e.target.classList && (e.target.classList.contains('rh') || e.target.classList.contains('rm')) && /^\d$/.test(e.target.value)) e.target.value = '0' + e.target.value;
+  if (e.target.id === 'qStart') { const st = e.target.value, en = $('#qEnd'); if (st >= '1900-01-01' && en && (!en.value || en.value < st || en.value > maxEnd(st))) en.value = addDays(addYears(st, 1), -1); }
+  if ((e.target.id === 'tTrail' || e.target.id === 'tAula') && /^\d$/.test(e.target.value)) e.target.value = '0' + e.target.value; // 1 dígito ganha zero na frente
+  if (e.target.id !== 'rStart') return;
+  const start = e.target.value, end = $('#rEnd'); if (!start || start < '1900-01-01' || !end) return;
+  if (!end.value || end.value < start || end.value > maxEnd(start)) end.value = addDays(addYears(start, 1), -1);
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && $('#modal').firstChild) { closeModal(); return; }
+  if (e.code === 'Space' && ui.view === 'hoje' && !$('#modal').firstChild) {
+    const tg = e.target.tagName;
+    if (['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(tg)) return;
+    e.preventDefault(); S.timer.running ? timerPause() : timerStart();
+  }
+});
+
+// =================== NUVEM (Supabase) — só ativa com config.js preenchido ===================
+const CLOUD = (typeof window !== 'undefined' && window.TT_CLOUD && window.TT_CLOUD.url && window.TT_CLOUD.key) ? window.TT_CLOUD : null;
+const SYNC_KEY = 'timetracker_sync_v1_u_';
+const cloud = { on: false, status: 'off', meta: null, tok: null, uid: null, timer: null, poll: null, busy: false, again: false, last: 0 };
+const cloudFetch = async (path, opt = {}, token) => {
+  const h = { apikey: CLOUD.key, 'Content-Type': 'application/json', ...(opt.headers || {}) };
+  h.Authorization = 'Bearer ' + (token || CLOUD.key);
+  const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 15000);
+  try { return await fetch(CLOUD.url.replace(/\/+$/, '') + path, { ...opt, headers: h, signal: ctl.signal }); } finally { clearTimeout(t); }
+};
+const metaLoad = u => { try { const m = JSON.parse(localStorage.getItem(SYNC_KEY + u) || 'null'); if (m) return m; } catch (e) {} return { stamp: {}, dead: {}, snap: {}, dirty: {}, since: 0, refresh: null, uid: null, fresh: true }; };
+const metaSave = () => { try { if (cloud.meta && curUser) localStorage.setItem(SYNC_KEY + curUser, JSON.stringify(cloud.meta)); } catch (e) {} };
+function cloudRecs() {
+  const r = {};
+  for (const d of Object.keys(S.sessions)) r['sessions/' + d] = S.sessions[d];
+  for (const d of Object.keys(S.rdays)) r['rdays/' + d] = S.rdays[d];
+  for (const t of ['goals', 'tasks', 'routines']) S[t].forEach((x, i) => { if (x.id == null) x.id = newId(); r[t + '/' + x.id] = { ...x, _i: i }; });
+  r['meta/timer'] = S.timer;
+  return r;
+}
+const strip = v => { const o = { ...v }; delete o._i; return JSON.stringify(o); };
+const recStr = (k, v) => k.startsWith('goals/') || k.startsWith('tasks/') || k.startsWith('routines/') ? strip(v) : JSON.stringify(v);
+// compara o estado atual com a última foto e marca como "pendente de envio" o que mudou (inclusive exclusões)
+function cloudDiff() {
+  const m = cloud.meta, recs = cloudRecs(), now = Date.now(); let ch = false;
+  for (const k of Object.keys(recs)) {
+    const s = recStr(k, recs[k]);
+    if (m.snap[k] !== s) { m.snap[k] = s; m.stamp[k] = Math.max(now, (m.stamp[k] || 0) + 1); delete m.dead[k]; m.dirty[k] = 1; ch = true; }
+  }
+  for (const k of Object.keys(m.snap)) if (!(k in recs)) { delete m.snap[k]; delete m.stamp[k]; m.dead[k] = Math.max(now, (m.dead[k] || 0) + 1); m.dirty[k] = 1; ch = true; }
+  return ch;
+}
+function cloudTouch() {
+  if (!cloud.on || !cloud.meta || cloud.applying) return;
+  if (cloudDiff()) { metaSave(); cloudSetStatus(navigator.onLine ? 'pend' : 'offline'); clearTimeout(cloud.timer); cloud.timer = setTimeout(cloudSync, 1200); }
+}
+function cloudSetStatus(s) {
+  if (cloud.status === s) return; cloud.status = s;
+  const i = document.querySelector('#nav .sdot'); if (i) i.className = 'sdot ' + s;
+  const l = $('#syncLine'); if (l) l.innerHTML = syncLine();
+}
+const SYNC_TXT = { ok: 'Sincronizado', pend: 'Alterações a enviar…', offline: 'Sem internet — alterações salvas no aparelho', auth: 'Entre de novo com internet para sincronizar', err: 'Falha ao sincronizar — tentando de novo', off: '' };
+const syncLine = () => `<i class="sdot ${cloud.status}"></i>${esc(SYNC_TXT[cloud.status] || '')}`;
+async function cloudToken() {
+  const t = cloud.tok;
+  if (t && t.exp > Date.now() + 60000) return t.access;
+  const rt = (t && t.refresh) || cloud.meta.refresh;
+  if (!rt) throw Object.assign(new Error('auth'), { auth: true });
+  const r = await cloudFetch('/auth/v1/token?grant_type=refresh_token', { method: 'POST', body: JSON.stringify({ refresh_token: rt }) });
+  if (r.status === 400 || r.status === 401) { cloud.meta.refresh = null; metaSave(); throw Object.assign(new Error('auth'), { auth: true }); }
+  if (!r.ok) throw new Error('http' + r.status);
+  cloudTok(await r.json()); return cloud.tok.access;
+}
+function cloudTok(j) {
+  cloud.tok = { access: j.access_token, refresh: j.refresh_token, exp: Date.now() + (j.expires_in || 3600) * 1000 };
+  if (j.user && j.user.id) cloud.uid = j.user.id;
+  if (cloud.meta) { cloud.meta.refresh = j.refresh_token; if (cloud.uid) cloud.meta.uid = cloud.uid; metaSave(); }
+}
+function cloudApply(rows) { // aplica o que veio da nuvem (a mais recente de cada registro vence)
+  const m = cloud.meta, touched = new Set(); let any = false;
+  const idx = { goals: new Map(), tasks: new Map(), routines: new Map() };
+  for (const r of rows) {
+    const k = r.k, ls = m.dead[k] || m.stamp[k] || 0;
+    if (r.ts <= ls) continue; // o local é mais novo (ou igual): mantém
+    any = true;
+    const [top, ...rest] = k.split('/'), id = rest.join('/');
+    if (top === 'sessions' || top === 'rdays') {
+      if (r.dead) delete S[top][id]; else S[top][id] = r.v;
+    } else if (top === 'meta') {
+      if (id === 'timer' && r.v && !r.dead) S.timer = r.v;
+    } else if (S[top]) {
+      const a = S[top], i = a.findIndex(x => String(x.id) === id);
+      if (r.dead) { if (i >= 0) a.splice(i, 1); }
+      else { const o = { ...r.v }; if (o._i != null) idx[top].set(id, o._i); delete o._i; if (i >= 0) a[i] = o; else a.push(o); touched.add(top); }
+    }
+    if (r.dead) { m.dead[k] = r.ts; delete m.stamp[k]; delete m.snap[k]; }
+    else { m.stamp[k] = r.ts; delete m.dead[k]; m.snap[k] = recStr(k, top === 'meta' ? r.v : r.v); }
+    delete m.dirty[k];
+  }
+  for (const top of touched) {
+    const a = S[top], cur = new Map(a.map((x, i) => [String(x.id), i]));
+    a.sort((x, y) => { const ix = idx[top].has(String(x.id)) ? idx[top].get(String(x.id)) : cur.get(String(x.id)), iy = idx[top].has(String(y.id)) ? idx[top].get(String(y.id)) : cur.get(String(y.id)); return ix - iy || cur.get(String(x.id)) - cur.get(String(y.id)); });
+  }
+  if (touched.has('tasks')) S.tasks = normTasks(S.tasks);
+  return any;
+}
+async function cloudSync() {
+  if (!cloud.on || !cloud.meta) return;
+  if (cloud.busy) { cloud.again = true; return; }
+  if (!navigator.onLine) { cloudSetStatus('offline'); return; }
+  cloud.busy = true;
+  try {
+    const token = await cloudToken(), m = cloud.meta, uid = cloud.uid || m.uid;
+    // 1) baixar
+    let changed = false;
+    for (let n = 0; n < 50; n++) {
+      const r = await cloudFetch('/rest/v1/records?select=k,v,ts,dead,srv&srv=gt.' + m.since + '&order=srv.asc&limit=500', {}, token);
+      if (r.status === 401) { cloud.tok = null; throw new Error('401'); }
+      if (!r.ok) throw new Error('http' + r.status);
+      const rows = await r.json();
+      if (!rows.length) break;
+      cloud.applying = true; try { if (cloudApply(rows)) changed = true; } finally { cloud.applying = false; }
+      m.since = rows[rows.length - 1].srv;
+      if (rows.length < 500) break;
+    }
+    if (changed) { try { localStorage.setItem(dataKey(), JSON.stringify(S)); } catch (e) {} cloudRefreshUI(); }
+    cloudDiff(); // (renumeração etc. feita ao aplicar)
+    // 2) enviar
+    const keys = Object.keys(m.dirty);
+    if (keys.length) {
+      const recs = cloudRecs(), sent = {};
+      const body = keys.map(k => { const dead = !(k in recs); sent[k] = dead ? m.dead[k] : m.stamp[k]; return { user_id: uid, k, v: dead ? null : recs[k], ts: sent[k], dead }; });
+      for (let i = 0; i < body.length; i += 200) {
+        const r = await cloudFetch('/rest/v1/records?on_conflict=user_id,k', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(body.slice(i, i + 200)) }, token);
+        if (r.status === 401) { cloud.tok = null; throw new Error('401'); }
+        if (!r.ok) throw new Error('http' + r.status);
+      }
+      for (const k of keys) if ((m.dead[k] || m.stamp[k]) === sent[k]) delete m.dirty[k];
+    }
+    m.fresh = false; metaSave(); cloud.last = Date.now();
+    cloudSetStatus(Object.keys(m.dirty).length ? 'pend' : 'ok');
+  } catch (e) {
+    if (e && e.auth) cloudSetStatus('auth');
+    else if (!navigator.onLine || (e && (e.name === 'TypeError' || e.name === 'AbortError'))) cloudSetStatus('offline');
+    else cloudSetStatus('err');
+  } finally {
+    cloud.busy = false;
+    if (cloud.again) { cloud.again = false; setTimeout(cloudSync, 300); }
+  }
+}
+function cloudRefreshUI() { // redesenha sem atrapalhar quem está digitando
+  if ($('#modal').innerHTML || $('#gate').innerHTML) return;
+  const a = document.activeElement; if (a && /INPUT|TEXTAREA|SELECT/.test(a.tagName) && a.closest('#view')) { cloud.dirtyUI = true; return; }
+  cloud.dirtyUI = false; render();
+}
+function cloudStart() {
+  cloudStop();
+  if (!CLOUD || !curUser) return;
+  cloud.on = true; cloud.meta = metaLoad(curUser); cloud.uid = cloud.meta.uid || null;
+  if (cloud.pending) { cloudTok(cloud.pending); cloud.pending = null; }
+  if (cloud.meta.fresh && !Object.keys(cloud.meta.snap).length) { /* primeiro uso neste aparelho: o que já existe localmente é enviado */ }
+  cloudDiff(); metaSave();
+  cloud.status = ''; cloudSetStatus(navigator.onLine ? 'pend' : 'offline');
+  cloudSync();
+  cloud.poll = setInterval(() => { if (document.visibilityState === 'visible') { cloudSync(); if (cloud.dirtyUI) cloudRefreshUI(); } }, 8000);
+}
+function cloudStop() { cloud.on = false; clearInterval(cloud.poll); clearTimeout(cloud.timer); cloud.meta = null; cloud.tok = null; cloud.status = 'off'; }
+if (typeof window !== 'undefined') {
+  addEventListener('online', () => { if (cloud.on) cloudSync(); });
+  addEventListener('offline', () => { if (cloud.on) cloudSetStatus('offline'); });
+  document.addEventListener('visibilitychange', () => { if (cloud.on && document.visibilityState === 'visible') cloudSync(); });
+}
+// ---- conta na nuvem ----
+const cloudErr = async r => { let j = {}; try { j = await r.json(); } catch (e) {} return (j.msg || j.error_description || j.message || j.error || '').toString(); };
+function cloudMsg(m) {
+  m = (m || '').toLowerCase();
+  if (m.includes('already')) return 'Esse e-mail já tem conta.';
+  if (m.includes('invalid login') || m.includes('invalid_grant') || m.includes('invalid credentials')) return 'E-mail ou senha incorretos.';
+  if (m.includes('not confirmed')) return 'Confirme o e-mail (veja sua caixa de entrada) antes de entrar.';
+  if (m.includes('signups not allowed') || m.includes('signup is disabled')) return 'Criação de contas está desativada.';
+  if (m.includes('rate') || m.includes('too many')) return 'Muitas tentativas. Aguarde um pouco.';
+  if (m.includes('password')) return 'Senha recusada pelo servidor (mínimo de 6 caracteres).';
+  return 'Não foi possível concluir. Tente de novo.';
+}
+async function cloudLogin(email, pass) { // devolve {ok} | {offline:true} | {error}
+  if (!navigator.onLine) return { offline: true };
+  try {
+    const r = await cloudFetch('/auth/v1/token?grant_type=password', { method: 'POST', body: JSON.stringify({ email, password: pass }) });
+    if (!r.ok) return { error: cloudMsg(await cloudErr(r)) };
+    return { ok: true, j: await r.json() };
+  } catch (e) { return { offline: true }; }
+}
+async function cloudSignup(email, pass) {
+  try {
+    const r = await cloudFetch('/auth/v1/signup', { method: 'POST', body: JSON.stringify({ email, password: pass }) });
+    if (!r.ok) return { error: cloudMsg(await cloudErr(r)) };
+    const j = await r.json();
+    if (j && j.user && Array.isArray(j.user.identities) && !j.user.identities.length) return { error: 'Esse e-mail já tem conta.' };
+    return { ok: true };
+  } catch (e) { return { error: 'Sem conexão com a internet. Criar conta exige internet.' }; }
+}
+
+// No programa local, fechar a janela pausa o cronômetro para não contar o tempo em que o programa ficou fechado.
+if (window.ttStore) addEventListener('pagehide', () => { if (S.timer.running) timerPause(); });
+if ('serviceWorker' in navigator && /^https?:/.test(location.protocol) && window.TT_CLOUD) navigator.serviceWorker.register('sw.js').catch(() => {});
+rollover();
+authInit();
+render();
+setInterval(() => {
+  if (today() !== curDay) { curDay = today(); rollover(); render(); return; }
+  tick();
+}, 250);
+</script>
+
