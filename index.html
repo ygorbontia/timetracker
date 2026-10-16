@@ -121,6 +121,10 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 20px; }
 .auth .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 14px; background: transparent; border: 0; text-align: left; width: 100%; }
 .auth .rows .row + .row { border-top: 1px solid var(--line); }
 .auth .row:hover { background: var(--surface-2); }
+.auth .row.opt { cursor: pointer; }
+.auth .row.opt:has(input:checked) { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.auth .row.opt input { width: 18px; height: 18px; flex: none; accent-color: var(--accent); margin: 0; }
+.rcard .row .btn { min-width: 104px; justify-content: center; }
 .auth .row strong { display: block; font-size: .95rem; }
 .auth .row small { display: block; color: var(--muted); font-size: .8rem; margin-top: 2px; }
 .auth .row svg { width: 18px; height: 18px; fill: none; stroke: var(--muted); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
@@ -497,7 +501,7 @@ function ruleDesc(g) {
   return '';
 }
 function validateRule(f, checkStart) {
-  if (!(f.hours > 0)) return 'Informe uma meta maior que zero.';
+  if (!(f.hours >= 0)) return 'Informe uma meta válida (use 0h para um dia de folga).';
   if (f.hours > 24) return 'A meta diária não pode passar de 24 horas.';
   if (f.type === 'CUSTOM' && !(f.customDays || []).length) return 'Escolha ao menos um dia da semana.';
   if (f.type === 'MONTHLY_DATE' && !(f.dom >= 1 && f.dom <= 31)) return 'Informe o dia do mês, de 1 a 31.';
@@ -561,7 +565,10 @@ function freezeFilled() {
     if (!s.ov && (s.secs > 0 || s.status !== 'PENDENTE')) { s.goal = resolveGoal(k); s.ov = true; }
   }
 }
-// Meta nova com início no passado: dias anteriores a hoje recebem a meta (exceto os ajustados à mão).
+// Dia passado travado: tem horas estudadas, foi ajustado/redefinido à mão, ou é uma folga de propósito (meta de 0h).
+// Editar ou excluir metas não muda esses dias.
+const lockedDay = x => !!x && (x.secs > 0 || !!x.ov || (!!x.fin && !(x.goal > 0) && x.status === 'CONCLUIDO'));
+// Meta nova com início no passado: dias anteriores a hoje recebem a meta (exceto os travados).
 function materialize(g) {
   const y = addDays(today(), -1), end = g.endDate && g.endDate < y ? g.endDate : y;
   let d = g.startDate, n = 0;
@@ -569,7 +576,7 @@ function materialize(g) {
     if (matchGoal(g, d)) {
       const x = S.sessions[d], gl = resolveGoal(d);
       if (!x) S.sessions[d] = { goal: gl, secs: 0, status: gl > 0 ? 'NAO_ESTUDADO' : 'CONCLUIDO', notes: '', ov: false, fin: true };
-      else if (!x.ov) { // dia com meta herdada de regra antiga: a meta nova passa a valer (dias editados à mão não mudam)
+      else if (!lockedDay(x)) { // dia livre com meta herdada de regra antiga: a meta nova passa a valer
         x.goal = gl; x.fin = true;
         if (!(x.secs > 0)) x.status = gl > 0 ? 'NAO_ESTUDADO' : 'CONCLUIDO';
       }
@@ -578,13 +585,15 @@ function materialize(g) {
   }
 }
 // Redefinir: apaga horas, observações e meta do dia, inclusive a vinda de meta recorrente (exceção que vale mais que a regra).
-function resetDay(d) {
-  const past = d < today();
-  S.sessions[d] = { goal: 0, secs: 0, status: past ? 'CONCLUIDO' : 'PENDENTE', notes: '', ov: true, fin: past, rst: true };
-  resetRoutineDay(d);
-  if (d === today()) timerReset();
+function resetDay(d, what = 'both') { // what: 'goals' (meta, horas, observações) | 'routines' (rotina do dia) | 'both'
+  if (what !== 'routines') {
+    const past = d < today();
+    S.sessions[d] = { goal: 0, secs: 0, status: past ? 'CONCLUIDO' : 'PENDENTE', notes: '', ov: true, fin: past, rst: true };
+    if (d === today()) timerReset();
+  }
+  if (what !== 'goals') resetRoutineDay(d);
 }
-function resetMonth(y, m) { rollover(); for (const d of monthDates(y, m)) resetDay(d); save(); }
+function resetMonth(y, m, what = 'both') { rollover(); for (const d of monthDates(y, m)) resetDay(d, what); save(); }
 function resetAll() { S.sessions = {}; S.goals = []; S.routines = []; S.rdays = {}; S.closed = null; timerReset(); rollover(); }
 const newId = () => 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 // Dia redefinido e ainda intocado (sem meta, horas ou observações): uma meta recorrente nova ou editada pode passar por cima dele.
@@ -594,8 +603,43 @@ function clearResets(g, from) {
   while (d <= g.endDate && n++ < 800) { if (isPureReset(S.sessions[d]) && matchGoal(g, d)) delete S.sessions[d]; d = addDays(d, 1); }
 }
 function addRule(f) { rollover(); freezeFilled(); const g = { ...f, id: newId() }; S.goals.push(g); clearResets(g); materialize(g); save(); return g; }
-function updateRule(id, f) { rollover(); freezeFilled(); const i = S.goals.findIndex(x => String(x.id) === String(id)); if (i < 0) return; S.goals[i] = { ...f, id: S.goals[i].id }; clearResets(S.goals[i], today()); save(); }
-function deleteRule(id) { rollover(); freezeFilled(); S.goals = S.goals.filter(x => String(x.id) !== String(id)); save(); }
+// Refaz os dias passados LIVRES de um intervalo conforme as metas atuais (dias travados não mudam).
+function rematerialize(from, to) {
+  const y = addDays(today(), -1), end = to && to < y ? to : y; let d = from, n = 0;
+  while (d <= end && n++ < 1500) {
+    const x = S.sessions[d];
+    if (!lockedDay(x)) {
+      const w = winningRule(d), gl = w ? w.hours : 0;
+      if (!x) { if (w) S.sessions[d] = { goal: gl, secs: 0, status: gl > 0 ? 'NAO_ESTUDADO' : 'CONCLUIDO', notes: '', ov: false, fin: true }; }
+      else if (!w && !x.notes) delete S.sessions[d];            // nenhuma meta vale mais neste dia: ele volta a ficar em branco
+      else { x.goal = gl; x.fin = true; x.status = gl > 0 ? 'NAO_ESTUDADO' : 'CONCLUIDO'; }
+    }
+    d = addDays(d, 1);
+  }
+}
+const ruleCore = g => JSON.stringify([g.type, g.hours, g.weekday ?? null, g.dom ?? null, g.nth ?? null, g.customDays ?? null]);
+function freePastDays(g) { // dias passados livres que esta meta controla hoje
+  const y = addDays(today(), -1), out = []; let d = g.startDate, n = 0;
+  while (d <= (g.endDate || y) && d <= y && n++ < 800) { if (matchGoal(g, d) && winningRule(d) === g && !lockedDay(S.sessions[d])) out.push(d); d = addDays(d, 1); }
+  return out;
+}
+// scope: 'all' = também refaz os dias passados livres; 'future' = só de hoje em diante
+function updateRule(id, f, scope) {
+  rollover(); freezeFilled(); const i = S.goals.findIndex(x => String(x.id) === String(id)); if (i < 0) return;
+  const old = S.goals[i], y = addDays(today(), -1); S.goals[i] = { ...f, id: old.id }; const g = S.goals[i];
+  clearResets(g, today());
+  if (scope === 'future') { save(); return; }
+  let d = g.startDate, n = 0; // dias que passaram a fazer parte da meta: ela vale mais que um "Redefinir" antigo
+  while (d <= (g.endDate || y) && d <= y && n++ < 800) { if (matchGoal(g, d) && !matchGoal(old, d) && isPureReset(S.sessions[d])) delete S.sessions[d]; d = addDays(d, 1); }
+  const lo = old.startDate < g.startDate ? old.startDate : g.startDate, hiO = old.endDate || y, hiN = g.endDate || y;
+  rematerialize(lo, hiO > hiN ? hiO : hiN); save();
+}
+function deleteRule(id) {
+  rollover(); freezeFilled(); const old = S.goals.find(x => String(x.id) === String(id));
+  S.goals = S.goals.filter(x => String(x.id) !== String(id));
+  if (old) rematerialize(old.startDate, old.endDate || addDays(today(), -1));
+  save();
+}
 
 function agg(dates) {
   const t = today(); let gAll = 0, goal = 0, studied = 0, lost = 0;
@@ -746,7 +790,20 @@ function validateRoutine(f, checkStart) {
   if (f.endDate > maxEnd(f.startDate)) return 'O período pode ter no máximo 2 anos.';
   return validateItems(f.items, true);
 }
-function addRoutine(f) { freezeRoutinePast(); const r = { id: newId(), weekday: f.weekday, startDate: f.startDate, endDate: f.endDate, items: cleanItems(f.items) }; S.routines.push(r); clearRoutineResets(r); save(); return r; }
+const hasMarks = ds => { const rd = S.rdays[ds]; return !!rd && Object.values(rd.marks || {}).some(v => v === true || v === false); };
+const routineDates = (r, to) => { const out = []; let d = r.startDate, n = 0; while (d <= r.endDate && (!to || d <= to) && n++ < 800) { if (matchRoutine(r, d)) out.push(d); d = addDays(d, 1); } return out; };
+// o dia editado à mão volta a seguir o modelo, a não ser que tenha ao menos uma atividade marcada (Cumpri / Não cumpri)
+function overrideCustomDay(d, tpl) {
+  const rd = S.rdays[d]; if (!rd || !rd.items || rd.fz || hasMarks(d)) return;
+  rd.items = null; delete rd.fz; delete rd.rst;
+  const ids = new Set(tpl.items.map(x => x.id)); for (const k of Object.keys(rd.notes || {})) if (!ids.has(k)) delete rd.notes[k];
+  rdTidy(d);
+}
+function addRoutine(f) {
+  freezeRoutinePast(); const r = { id: newId(), weekday: f.weekday, startDate: f.startDate, endDate: f.endDate, items: cleanItems(f.items) }; S.routines.push(r);
+  clearRoutineResets(r); for (const d of routineDates(r)) overrideCustomDay(d, r);
+  save(); return r;
+}
 // datas que já passaram em que esta rotina é a que vale (dias específicos editados à mão não contam)
 function routinePastDates(r) {
   const y = addDays(today(), -1), out = []; let d = r.startDate, n = 0;
@@ -756,11 +813,26 @@ function routinePastDates(r) {
 // scope: 'future' = só de hoje em diante (os dias passados ficam como estavam); 'all' = também as datas passadas do período
 function updateRoutine(id, f, scope) {
   const i = S.routines.findIndex(x => x.id === id); if (i < 0) return null;
+  const old = S.routines[i], td = today(), itemsChanged = !sameItems(old.items, f.items) || old.items.length !== f.items.length || old.weekday !== f.weekday;
   freezeRoutinePast();
-  const mine = scope === 'all' ? routinePastDates(S.routines[i]) : [];
-  S.routines[i] = { id, weekday: f.weekday, startDate: f.startDate, endDate: f.endDate, items: cleanItems(f.items) };
-  const nr = S.routines[i];
-  clearRoutineResets(nr, scope === 'all' ? undefined : today());
+  const oldWin = routineDates(old).filter(d => routineFor(d) === old);                    // dias em que a rotina antiga valia
+  const mine = scope === 'all' ? routinePastDates(old) : [];
+  const nr = S.routines[i] = { id, weekday: f.weekday, startDate: f.startDate, endDate: f.endDate, items: cleanItems(f.items) };
+  // dias que saíram do período: sem marcação são apagados; com marcação ficam como estavam (congelados, sem receber mais mudanças)
+  for (const d of oldWin) {
+    if (d > td || matchRoutine(nr, d)) continue;
+    const rd = S.rdays[d];
+    if (hasMarks(d)) { const r2 = rdEnsure(d); if (!r2.items) { r2.items = old.items.map(x => ({ ...x })); r2.fz = true; } }
+    else if (rd && (!rd.items || rd.fz)) delete S.rdays[d];
+  }
+  const from = scope === 'all' ? '0000-00-00' : td;
+  for (const d of routineDates(nr)) {
+    if (routineFor(d) !== nr) continue;
+    const isNew = !matchRoutine(old, d) || old.weekday !== nr.weekday;                      // dia que passou a fazer parte do período
+    if (!isNew && !(itemsChanged && d >= from)) continue;
+    if (isPureRoutineReset(S.rdays[d])) delete S.rdays[d];
+    overrideCustomDay(d, nr);                                                             // dia editado à mão (sem marcação) também recebe a mudança
+  }
   for (const d of mine) { // dias congelados voltam a seguir o modelo; marcas e observações das atividades que continuam são mantidas
     const rd = S.rdays[d]; if (!rd || !rd.fz || routineFor(d) !== nr) continue;
     rd.items = null; delete rd.fz; delete rd.rst;
@@ -1169,6 +1241,17 @@ function saveDayR() {
   if (!R.tpl) { saveDayRoutine(ds, items); closeModal(); toast('Rotina do dia salva.'); refreshDay(ds); return; }
   pendingDayR = { ds, items }; scopeModal(ds, R.tpl);
 }
+function resetModal(kind, ds) {
+  const day = kind === 'day', title = day ? `Redefinir ${fmtBR(ds)}` : `Redefinir ${MON[ui.calM]} de ${ui.calY}`, per = day ? 'deste dia' : 'deste mês';
+  const opt = (v, t, d, on) => `<label class="row opt"><span><strong>${t}</strong><small>${d}</small></span><input type="radio" name="rsel" value="${v}" ${on ? 'checked' : ''}></label>`;
+  openModal(`<div class="auth stack"><div class="ahead"><div><p class="eyebrow">Redefinir</p><h2>${title}</h2><p class="small muted">Escolha o que apagar ${per}. Vale mesmo para o que veio de metas e rotinas recorrentes, e não dá para desfazer.</p></div></div>
+    <div class="rows">
+      ${opt('goals', 'Metas', 'Meta, horas estudadas e observações.', false)}
+      ${opt('routines', 'Rotinas', 'Atividades, marcações e observações da rotina.', false)}
+      ${opt('both', 'Metas e rotinas', 'Tudo o que foi listado acima.', true)}
+    </div>
+    <div class="foot"><button type="button" class="btn ghost" data-act="close">Cancelar</button><button type="button" class="btn stop" data-act="rstok" data-k="${kind}" data-d="${ds || ''}">Confirmar</button></div></div>`);
+}
 function scopeModal(ds, tpl) {
   const wd = WDN[parse(ds).getDay()];
   openModal(`<div class="auth stack"><div class="ahead"><div><p class="eyebrow">Rotina</p><h2>Onde aplicar a mudança?</h2><p class="small muted">Você mudou a rotina de ${WD[parse(ds).getDay()]}, ${fmtBR(ds)}.</p></div></div>
@@ -1208,16 +1291,18 @@ function saveRoutine() {
   const f = { weekday: +$('#qWd').value, startDate: $('#qStart').value, endDate: $('#qEnd').value, items: readRows() };
   const err = validateRoutine(f, !old || old.startDate !== f.startDate);
   if (err) { toast(err); return; }
-  if (old && routinePastDates(old).length) { pendingRoutine = { id: old.id, f }; routineScopeModal(old); return; }
-  if (old) updateRoutine(old.id, f, 'future'); else addRoutine(f);
-  closeModal(); toast(old ? 'Rotina atualizada. Vale a partir de hoje.' : 'Rotina criada.'); render();
+  // só pergunta onde aplicar se mudou horário ou atividade; mudar só datas vale para todo o período
+  const itemsChanged = old && (!sameItems(old.items, f.items) || old.items.length !== f.items.length);
+  if (itemsChanged && old.weekday === f.weekday && routinePastDates(old).length) { pendingRoutine = { id: old.id, f }; routineScopeModal(old); return; }
+  if (old) updateRoutine(old.id, f, 'all'); else addRoutine(f);
+  closeModal(); toast(old ? 'Rotina atualizada.' : 'Rotina criada.'); render();
 }
 let pendingRoutine = null;
 function routineScopeModal(old) {
   const wd = WDN[old.weekday].split('-')[0], ps = routinePastDates(old), n = ps.length;
   openModal(`<div class="auth stack"><div class="ahead"><div><p class="eyebrow">Rotina</p><h2>Aplicar a mudança onde?</h2><p class="small muted">Você mudou a rotina de ${WD[old.weekday]} (${fmtBR(old.startDate)} a ${fmtBR(old.endDate)}).</p></div></div>
     <div class="rows">
-      <button type="button" class="row" data-act="rscope" data-s="all"><span><strong>Todas as ${wd}s da rotina</strong><small>Inclui ${n === 1 ? 'a 1 ' + wd + ' que já passou' : 'as ' + n + ' ' + wd + 's que já passaram'} (${fmtBR(ps[0])} a ${fmtBR(ps[n - 1])}). Dias que você editou à mão e rotinas de fora desse período não mudam. Marcações são mantidas.</small></span>${CHEV}</button>
+      <button type="button" class="row" data-act="rscope" data-s="all"><span><strong>Todas as ${wd}s da rotina</strong><small>Inclui ${n === 1 ? 'a 1 ' + wd + ' que já passou' : 'as ' + n + ' ' + wd + 's que já passaram'} (${fmtBR(ps[0])} a ${fmtBR(ps[n - 1])}). Dias que você editou à mão também mudam, exceto os que têm atividade marcada (Cumpri / Não cumpri). Rotinas de fora do período não mudam.</small></span>${CHEV}</button>
       <button type="button" class="row" data-act="rscope" data-s="future"><span><strong>Só de hoje em diante</strong><small>As ${wd}s anteriores a ${fmtBR(today())} continuam como estão.</small></span>${CHEV}</button>
     </div>
     <div class="foot"><button type="button" class="btn ghost" data-act="rscopeback">Voltar</button></div></div>`);
@@ -1445,7 +1530,7 @@ async function authRun() {
 async function authOut() { if (CLOUD && cloud.on) { try { await Promise.race([cloudSync(), new Promise(r => setTimeout(r, 2500))]); } catch (e) {} } cloudStop(); auth.session = null; auth.sub = null; auth.tab = 'in'; authSave(); closeModal(); switchData(); toast('Você saiu da conta.'); }
 document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.closest && e.target.closest('#authForm')) { e.preventDefault(); authGo(); } });
 document.addEventListener('keydown', e => { // Enter no nome da atividade = "Adicionar atividade"
-  if (e.key === 'Enter' && e.target.classList && e.target.classList.contains('ra') && e.target.closest('#rrows')) { e.preventDefault(); e.target.value = capAct(e.target.value); addRrow(); }
+  if (e.key === 'Enter' && e.target.classList && e.target.classList.contains('ra') && e.target.closest('#rrows')) { e.preventDefault(); e.target.value = capAct(e.target.value); const nx = e.target.closest('.rrow').nextElementSibling; if (nx && nx.classList.contains('rrow')) { nx.querySelector('.rh').focus(); nx.scrollIntoView({ block: 'nearest' }); } else addRrow(); }
 });
 document.addEventListener('keydown', e => {
   const c = e.target.closest && e.target.closest('[role="button"][data-act]');
@@ -1527,7 +1612,7 @@ function ruleModal(g) {
   const types = type === 'NONE' ? [['NONE', 'Somente um dia'], ...RTYPES] : RTYPES;
   openModal(`<div><p class="eyebrow">${isNew ? 'Nova meta' : 'Editar meta'}</p><h2 style="font-size:1.25rem;margin-top:4px">Meta recorrente</h2></div>
   <form id="ruleForm" data-id="${g ? esc(String(g.id)) : ''}" class="stack" onsubmit="return false">
-    <div class="field"><span class="label">Meta por dia</span>${hmIn('rg', sec)}</div>
+    <div class="field"><span class="label">Meta por dia</span>${hmIn('rg', sec)}<span class="small muted">Use 0h para marcar um dia de folga.</span></div>
     <div class="field"><label class="label" for="rType">Repetir</label><select id="rType">${opts(types, type)}</select><span class="small tone-acc" id="rDesc"></span></div>
     <div class="field" id="fWd"><label class="label" for="rWd">Dia da semana</label><select id="rWd">${opts(WDN.map((n, i) => [i, n.charAt(0).toUpperCase() + n.slice(1)]), wd)}</select></div>
     <div class="field" id="fNth"><label class="label" for="rNth">Qual deles no mês</label><select id="rNth">${opts(NTH, nth)}</select></div>
@@ -1569,8 +1654,20 @@ function saveRule() {
   const f = readRule(), old = id ? S.goals.find(x => String(x.id) === id) : null;
   const err = validateRule(f, !old || old.startDate !== f.startDate);
   if (err) { toast(err); return; }
-  if (old) updateRule(old.id, f); else addRule(f);
-  closeModal(); toast(old ? 'Meta atualizada. Vale a partir de hoje.' : 'Meta criada.'); render();
+  // só pergunta onde aplicar se mudou a meta em si (horas / dias); mudar só as datas vale para todo o período
+  if (old && ruleCore(old) !== ruleCore(f) && freePastDays(old).length) { pendingRule = { id: old.id, f }; ruleScopeModal(old); return; }
+  if (old) updateRule(old.id, f, 'all'); else addRule(f);
+  closeModal(); toast(old ? 'Meta atualizada.' : 'Meta criada.'); render();
+}
+let pendingRule = null;
+function ruleScopeModal(old) {
+  const ps = freePastDays(old), n = ps.length;
+  openModal(`<div class="auth stack"><div class="ahead"><div><p class="eyebrow">Meta</p><h2>Aplicar a mudança onde?</h2><p class="small muted">Você mudou a meta de ${fmtBR(old.startDate)} a ${fmtBR(old.endDate)}.</p></div></div>
+    <div class="rows">
+      <button type="button" class="row" data-act="gscope" data-s="future"><span><strong>Só de hoje em diante</strong><small>Os dias anteriores a ${fmtBR(today())} continuam como estão.</small></span>${CHEV}</button>
+      <button type="button" class="row" data-act="gscope" data-s="all"><span><strong>Incluir dias passados livres</strong><small>Refaz ${n} dia${n === 1 ? '' : 's'} que já passou${n === 1 ? '' : 'ram'} (${fmtBR(ps[0])} a ${fmtBR(ps[n - 1])}). Dias com horas estudadas, folgas de propósito (meta de 0h) e dias que você ajustou à mão não mudam.</small></span>${CHEV}</button>
+    </div>
+    <div class="foot"><button type="button" class="btn ghost" data-act="gscopeback">Voltar</button></div></div>`);
 }
 
 function dataModal() {
@@ -1603,16 +1700,12 @@ document.addEventListener('click', e => {
       <p class="muted" style="margin:0">Se você confirmar, as metas, rotinas e registros de estudo serão excluídos. As tarefas da Planilha de Estudos não são apagadas. Deseja prosseguir?</p>
       <div class="foot"><button type="button" class="btn ghost" data-act="close">Cancelar</button><button type="button" class="btn stop" data-act="rstallok">Prosseguir</button></div>`); break;
     case 'rstallok': resetAll(); closeModal(); toast('Todos os registros foram redefinidos.'); render(); break;
-    case 'rstday': case 'rstmonth': {
-      if (b.dataset.armed !== '1') { // confirmação em dois toques
-        document.querySelectorAll('[data-armed="1"]').forEach(x => { x.dataset.armed = ''; if (x.dataset.label) x.textContent = x.dataset.label; x.style.width = ''; });
-        b.style.width = b.offsetWidth + 'px'; b.dataset.armed = '1'; b.textContent = 'Confirmar'; // mantém o tamanho do botão
-        clearTimeout(window._xt); window._xt = setTimeout(() => { b.dataset.armed = ''; b.textContent = b.dataset.label; b.style.width = ''; }, 4000);
-        break;
-      }
-      clearTimeout(window._xt);
-      if (a === 'rstday') { const d = b.dataset.d || $('#dayForm').dataset.d; rollover(); resetDay(d); save(); closeModal(); toast('Dia redefinido.'); }
-      else { resetMonth(ui.calY, ui.calM); toast('Mês redefinido.'); }
+    case 'rstday': case 'rstmonth': resetModal(a === 'rstday' ? 'day' : 'month', b.dataset.d || ($('#dayForm') && $('#dayForm').dataset.d)); break;
+    case 'rstok': {
+      const w = (document.querySelector('input[name=rsel]:checked') || {}).value || 'both', k = b.dataset.k, d = b.dataset.d;
+      rollover();
+      if (k === 'day') { resetDay(d, w); save(); closeModal(); toast('Dia redefinido.'); }
+      else { resetMonth(ui.calY, ui.calM, w); closeModal(); toast('Mês redefinido.'); }
       render(); break;
     }
     case 'savenote': { const t = $('#notes'); ensure(today()).notes = t.value; save(); $('#noteSave').disabled = true; $('#noteSave').textContent = 'Salvo'; $('#noteSt').textContent = 'Alterações salvas!'; $('#noteSt').classList.add('ok'); break; }
@@ -1627,12 +1720,14 @@ document.addEventListener('click', e => {
     }
     case 'newrule': ruleModal(null); break;
     case 'newroutine': routineModal(null); break;
+    case 'gscope': { const pr = pendingRule; if (!pr) break; pendingRule = null; updateRule(pr.id, pr.f, b.dataset.s === 'all' ? 'all' : 'future'); closeModal(); toast(b.dataset.s === 'all' ? 'Meta atualizada, inclusive nos dias passados livres.' : 'Meta atualizada. Vale a partir de hoje.'); render(); break; }
+    case 'gscopeback': { const pr = pendingRule; pendingRule = null; if (pr) ruleModal({ id: pr.id, ...pr.f }); else closeModal(); break; }
     case 'rscope': { const pr = pendingRoutine; if (!pr) break; pendingRoutine = null; updateRoutine(pr.id, pr.f, b.dataset.s === 'all' ? 'all' : 'future'); closeModal(); toast(b.dataset.s === 'all' ? 'Rotina atualizada em todas as datas do período.' : 'Rotina atualizada. Vale a partir de hoje.'); render(); break; }
     case 'rscopeback': { const pr = pendingRoutine; pendingRoutine = null; if (pr) routineModal({ id: pr.id, ...pr.f }); else closeModal(); break; }
     case 'editroutine': { const r = S.routines.find(x => x.id === b.dataset.id); if (r) routineModal(r); break; }
     case 'saveroutine': saveRoutine(); break;
     case 'delroutine':
-      if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Confirmar exclusão'; clearTimeout(b._t); b._t = setTimeout(() => { b.dataset.armed = ''; b.textContent = 'Excluir'; }, 3500); break; }
+      if (b.dataset.armed !== '1') { b.style.width = b.offsetWidth + 'px'; b.dataset.armed = '1'; b.textContent = 'Confirmar'; clearTimeout(b._t); b._t = setTimeout(() => { b.dataset.armed = ''; b.textContent = 'Excluir'; b.style.width = ''; }, 3000); break; }
       deleteRoutine(b.dataset.id); toast('Rotina excluída. Os dias que já passaram mantêm a rotina que tinham.'); render(); break;
     case 'editday': dayRoutineModal(b.dataset.d); break;
     case 'rtoggle': ui.routineOpen = !ui.routineOpen; repaintRoutine(b.dataset.d); break;
@@ -1669,14 +1764,9 @@ document.addEventListener('click', e => {
       deleteTask(b.dataset.id); toast('Tarefa excluída.'); go(); break;
     case 'editrule': { const g = S.goals.find(x => String(x.id) === b.dataset.id); if (g) ruleModal(g); break; }
     case 'saverule': saveRule(); break;
-    case 'delrule': {
-      if (b.dataset.armed !== '1') {
-        b.dataset.armed = '1'; b.textContent = 'Confirmar exclusão';
-        clearTimeout(window._dt); window._dt = setTimeout(() => { b.dataset.armed = ''; b.textContent = 'Excluir'; }, 3500);
-        break;
-      }
-      clearTimeout(window._dt); deleteRule(b.dataset.id); toast('Meta excluída. Os dias que já passaram mantêm a meta que tinham.'); render(); break;
-    }
+    case 'delrule':
+      if (b.dataset.armed !== '1') { b.style.width = b.offsetWidth + 'px'; b.dataset.armed = '1'; b.textContent = 'Confirmar'; clearTimeout(b._t); b._t = setTimeout(() => { b.dataset.armed = ''; b.textContent = 'Excluir'; b.style.width = ''; }, 3000); break; }
+      deleteRule(b.dataset.id); toast('Meta excluída. Dias passados com estudo, folgas de propósito e dias ajustados à mão foram mantidos.'); render(); break;
     case 'unov': { const u = ensure(today()); u.ov = false; u.goal = resolveGoal(today()); save(); render(); break; }
     case 'fillrule': {
       const sec = +b.dataset.s; $('#gh').value = Math.floor(sec / 3600); $('#gm').value = Math.floor(sec % 3600 / 60);
