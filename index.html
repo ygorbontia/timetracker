@@ -647,6 +647,8 @@ function validateTask(f, td) {
 const cleanTask = f => ({ trail: String(f.trail).padStart(2, '0'), disc: String(f.disc).trim().replace(/\s+/g, ' '), aula: String(f.aula).padStart(2, '0'), d0: f.d0 || '', rv: [0, 1, 2].map(k => f.rv[k] || ''), ex: f.ex, hit: f.hit });
 function addTask(f) { const t = { ...cleanTask(f), n: nextTaskN(), id: newId() }; S.tasks.push(t); save(); return t; }
 function updateTask(id, f) { const i = S.tasks.findIndex(x => x.id === id); if (i < 0) return null; S.tasks[i] = { ...cleanTask(f), n: S.tasks[i].n, id }; save(); return S.tasks[i]; }
+// Apaga só a planilha de estudos. Nenhum outro botão (nem 'Redefinir tudo') mexe nas tarefas.
+function deleteAllTasks() { S.tasks = []; save(); }
 function deleteTask(id) { S.tasks = normTasks(S.tasks.filter(x => x.id !== id)); save(); }
 function setTaskDate(id, k, val, td) { // k 0 = execução, 1..3 = revisões; devolve texto de erro ou ''
   const t = S.tasks.find(x => x.id === id); if (!t) return 'Tarefa não encontrada.';
@@ -745,9 +747,29 @@ function validateRoutine(f, checkStart) {
   return validateItems(f.items, true);
 }
 function addRoutine(f) { freezeRoutinePast(); const r = { id: newId(), weekday: f.weekday, startDate: f.startDate, endDate: f.endDate, items: cleanItems(f.items) }; S.routines.push(r); clearRoutineResets(r); save(); return r; }
-function updateRoutine(id, f) {
+// datas que já passaram em que esta rotina é a que vale (dias específicos editados à mão não contam)
+function routinePastDates(r) {
+  const y = addDays(today(), -1), out = []; let d = r.startDate, n = 0;
+  while (d <= r.endDate && d <= y && n++ < 800) { if (routineFor(d) === r) { const rd = S.rdays[d]; if (!(rd && rd.items && !rd.fz)) out.push(d); } d = addDays(d, 1); }
+  return out;
+}
+// scope: 'future' = só de hoje em diante (os dias passados ficam como estavam); 'all' = também as datas passadas do período
+function updateRoutine(id, f, scope) {
   const i = S.routines.findIndex(x => x.id === id); if (i < 0) return null;
-  freezeRoutinePast(); S.routines[i] = { id, weekday: f.weekday, startDate: f.startDate, endDate: f.endDate, items: cleanItems(f.items) }; clearRoutineResets(S.routines[i], today()); save(); return S.routines[i];
+  freezeRoutinePast();
+  const mine = scope === 'all' ? routinePastDates(S.routines[i]) : [];
+  S.routines[i] = { id, weekday: f.weekday, startDate: f.startDate, endDate: f.endDate, items: cleanItems(f.items) };
+  const nr = S.routines[i];
+  clearRoutineResets(nr, scope === 'all' ? undefined : today());
+  for (const d of mine) { // dias congelados voltam a seguir o modelo; marcas e observações das atividades que continuam são mantidas
+    const rd = S.rdays[d]; if (!rd || !rd.fz || routineFor(d) !== nr) continue;
+    rd.items = null; delete rd.fz; delete rd.rst;
+    const ids = new Set(nr.items.map(x => x.id));
+    for (const k of Object.keys(rd.marks || {})) if (!ids.has(k)) delete rd.marks[k];
+    for (const k of Object.keys(rd.notes || {})) if (!ids.has(k)) delete rd.notes[k];
+    rdTidy(d);
+  }
+  save(); return nr;
 }
 function deleteRoutine(id) { freezeRoutinePast(); S.routines = S.routines.filter(x => x.id !== id); save(); }
 /*LOGIC-END*/
@@ -1035,7 +1057,7 @@ function viewPlan() {
   }).join('');
   const chip = (k, n) => `<button class="btn sm ${F === k ? '' : 'ghost'}" data-act="planf" data-f="${k}" ${F === k ? 'aria-pressed="true"' : ''}>${n}</button>`;
   const head = '<tr><th>Tarefa</th><th>Trilha</th><th class="l">Disciplina</th><th>Aula</th><th>Data<br>Execução</th><th>Data Rev.<br>24h</th><th>Data Rev.<br>7D</th><th>Data Rev.<br>30D</th><th>Qtd.<br>Exercícios</th><th>Qtd.<br>acertos</th><th>Desem-<br>penho</th><th></th></tr>';
-  return `<div class="pagehead"><div><p class="eyebrow">Planilha</p><h1>Planilha de estudos</h1></div><button class="btn start" data-act="newtask">Nova tarefa</button></div>
+  return `<div class="pagehead"><div><p class="eyebrow">Planilha</p><h1>Planilha de estudos</h1></div><div class="row">${all.length ? '<button class="btn ghost danger" data-act="deltasks" data-label="Excluir tudo">Excluir tudo</button>' : ''}<button class="btn start" data-act="newtask">Nova tarefa</button></div></div>
   ${all.length ? `<div class="stats4">${stat('A estudar', toStudy, toStudy ? 'acc' : '')}${stat('Revisões hoje', due, due ? 'acc' : '')}${stat('Revisões atrasadas', over, over ? 'bad' : '')}${stat('Desempenho', perf === null ? '—' : pct(perf), perf === null ? 'mut' : perfTone(perf, 1))}</div>
   <div class="row">${chip('all', 'Todas')}${chip('estudar', 'A estudar')}${chip('revisar', 'Revisar agora')}</div>
   ${list.length ? `<div class="tblwrap"><table class="plan"><thead>${head}</thead><tbody>${rows}</tbody></table></div>
@@ -1186,8 +1208,19 @@ function saveRoutine() {
   const f = { weekday: +$('#qWd').value, startDate: $('#qStart').value, endDate: $('#qEnd').value, items: readRows() };
   const err = validateRoutine(f, !old || old.startDate !== f.startDate);
   if (err) { toast(err); return; }
-  if (old) updateRoutine(old.id, f); else addRoutine(f);
+  if (old && routinePastDates(old).length) { pendingRoutine = { id: old.id, f }; routineScopeModal(old); return; }
+  if (old) updateRoutine(old.id, f, 'future'); else addRoutine(f);
   closeModal(); toast(old ? 'Rotina atualizada. Vale a partir de hoje.' : 'Rotina criada.'); render();
+}
+let pendingRoutine = null;
+function routineScopeModal(old) {
+  const wd = WDN[old.weekday].split('-')[0], ps = routinePastDates(old), n = ps.length;
+  openModal(`<div class="auth stack"><div class="ahead"><div><p class="eyebrow">Rotina</p><h2>Aplicar a mudança onde?</h2><p class="small muted">Você mudou a rotina de ${WD[old.weekday]} (${fmtBR(old.startDate)} a ${fmtBR(old.endDate)}).</p></div></div>
+    <div class="rows">
+      <button type="button" class="row" data-act="rscope" data-s="all"><span><strong>Todas as ${wd}s da rotina</strong><small>Inclui ${n === 1 ? 'a 1 ' + wd + ' que já passou' : 'as ' + n + ' ' + wd + 's que já passaram'} (${fmtBR(ps[0])} a ${fmtBR(ps[n - 1])}). Dias que você editou à mão e rotinas de fora desse período não mudam. Marcações são mantidas.</small></span>${CHEV}</button>
+      <button type="button" class="row" data-act="rscope" data-s="future"><span><strong>Só de hoje em diante</strong><small>As ${wd}s anteriores a ${fmtBR(today())} continuam como estão.</small></span>${CHEV}</button>
+    </div>
+    <div class="foot"><button type="button" class="btn ghost" data-act="rscopeback">Voltar</button></div></div>`);
 }
 function routineCardMeta(r) {
   const its = byTime(r.items), more = its.length - 4;
@@ -1567,7 +1600,7 @@ document.addEventListener('click', e => {
     case 'toggle': S.timer.running ? timerPause() : timerStart(); break;
     case 'done': timerDone(); break;
     case 'rstall': openModal(`<div><h2 style="font-size:1.25rem">Redefinir tudo</h2></div>
-      <p class="muted" style="margin:0">Se você confirmar, todas as informações salvas até então serão excluídas. Deseja prosseguir?</p>
+      <p class="muted" style="margin:0">Se você confirmar, as metas, rotinas e registros de estudo serão excluídos. As tarefas da Planilha de Estudos não são apagadas. Deseja prosseguir?</p>
       <div class="foot"><button type="button" class="btn ghost" data-act="close">Cancelar</button><button type="button" class="btn stop" data-act="rstallok">Prosseguir</button></div>`); break;
     case 'rstallok': resetAll(); closeModal(); toast('Todos os registros foram redefinidos.'); render(); break;
     case 'rstday': case 'rstmonth': {
@@ -1594,6 +1627,8 @@ document.addEventListener('click', e => {
     }
     case 'newrule': ruleModal(null); break;
     case 'newroutine': routineModal(null); break;
+    case 'rscope': { const pr = pendingRoutine; if (!pr) break; pendingRoutine = null; updateRoutine(pr.id, pr.f, b.dataset.s === 'all' ? 'all' : 'future'); closeModal(); toast(b.dataset.s === 'all' ? 'Rotina atualizada em todas as datas do período.' : 'Rotina atualizada. Vale a partir de hoje.'); render(); break; }
+    case 'rscopeback': { const pr = pendingRoutine; pendingRoutine = null; if (pr) routineModal({ id: pr.id, ...pr.f }); else closeModal(); break; }
     case 'editroutine': { const r = S.routines.find(x => x.id === b.dataset.id); if (r) routineModal(r); break; }
     case 'saveroutine': saveRoutine(); break;
     case 'delroutine':
@@ -1626,6 +1661,9 @@ document.addEventListener('click', e => {
     case 'savecell': saveCell(false); break;
     case 'clearcell': saveCell(true); break;
     case 'planf': ui.planF = b.dataset.f; go(); break;
+    case 'deltasks':
+      if (b.dataset.armed !== '1') { b.style.width = b.offsetWidth + 'px'; b.dataset.armed = '1'; b.textContent = 'Confirmar'; clearTimeout(b._t); b._t = setTimeout(() => { b.dataset.armed = ''; b.textContent = 'Excluir tudo'; b.style.width = ''; }, 3000); break; }
+      deleteAllTasks(); toast('Todas as tarefas da planilha foram excluídas.'); go(); break;
     case 'deltask':
       if (b.dataset.armed !== '1') { b.style.width = b.offsetWidth + 'px'; b.dataset.armed = '1'; b.textContent = 'Confirmar'; clearTimeout(b._t); b._t = setTimeout(() => { b.dataset.armed = ''; b.textContent = 'Excluir'; b.style.width = ''; }, 3000); break; }
       deleteTask(b.dataset.id); toast('Tarefa excluída.'); go(); break;
