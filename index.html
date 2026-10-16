@@ -1,4 +1,4 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html{color-scheme:dark}body{margin:0}[hidden]{display:none!important}</style>
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><style>html{color-scheme:dark}body{margin:0;touch-action:manipulation}[hidden]{display:none!important}</style>
 <title>TimeTracker & Study Planner</title>
 
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -97,8 +97,9 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 20px; }
 .btn.ghost { background: transparent; }
 .btn.danger { color: var(--bad-fg); }
 .nav button { position: relative; }
-.sdot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 8px var(--ok); margin-right: 6px; vertical-align: middle; }
+.sdot { flex: none; min-width: 7px; min-height: 7px; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 8px var(--ok); margin-right: 6px; vertical-align: middle; }
 .sdot.pend { background: #f5b942; box-shadow: 0 0 8px #f5b942; } .sdot.offline, .sdot.off { background: #8a8a99; box-shadow: none; } .sdot.auth, .sdot.err { background: #ef5b5b; box-shadow: 0 0 8px #ef5b5b; }
+.st-pend { color: #f5b942; } .st-offline { color: #9a9aa8; } .st-err, .st-auth { color: #ef7b7b; }
 .nav button .sdot { position: absolute; top: 9px; right: 10px; margin: 0; }
 .nav button i.on { position: absolute; top: 9px; right: 10px; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 8px var(--ok); }
 .auth input { background: var(--bg); border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; width: 100%; min-width: 0; }
@@ -1248,6 +1249,7 @@ function render() {
   if (out) { if (!g.firstChild) accountModal(); return; }
   if (g.firstChild) g.innerHTML = '';
   if (ui.view === 'dia' && (!ui.day || ui.day === today())) ui.view = ui.day ? 'hoje' : (ui.dayFrom || 'cal');
+  navTrack();
   $('#nav').innerHTML = NAV.map(([k, n, sh]) => `<button data-act="nav" data-v="${k}" ${(ui.view === 'dia' ? (ui.dayFrom || 'cal') : ui.view) === k ? 'aria-current="page"' : ''}><svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg><span class="lf">${n}</span><span class="ls">${sh || n}</span>${k === 'conta' && auth.session ? (CLOUD ? `<i class="sdot ${cloud.status}" title="${esc(SYNC_TXT[cloud.status] || 'Conectado')}"></i>` : '<i class="on" title="Conectado"></i>') : ''}</button>`).join('');
   $('#view').innerHTML = `<div class="view">${VIEWS[ui.view]()}</div>`;
   if (ui.view === 'hoje') tick();
@@ -1282,7 +1284,7 @@ async function authInit() {
 const authName = v => String(v || '').trim().toLowerCase();
 // troca os dados na tela para os do usuário atual (ou do modo sem conta)
 function switchData() {
-  curUser = auth.session; S = load(); rollover(); $('#gate').innerHTML = ''; cloudStart();
+  navStack = []; navLast = null; curUser = auth.session; S = load(); rollover(); $('#gate').innerHTML = ''; cloudStart();
   ui.weekOff = 0; ui.monOff = 0; ui.calY = now0.getFullYear(); ui.calM = now0.getMonth(); curDay = today();
   render();
 }
@@ -1420,10 +1422,27 @@ document.addEventListener('keydown', e => {
 });
 
 function openModal(html) {
+  if (!modalPushed) { modalPushed = true; try { history.pushState({ tt: 1 }, ''); } catch (e) {} }
   $('#modal').innerHTML = `<div class="scrim" data-act="scrim"><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`;
   const f = $('#modal input, #modal select, #modal textarea'); if (f) f.focus();
 }
-const closeModal = () => { $('#modal').innerHTML = ''; };
+const closeModal = () => { $('#modal').innerHTML = ''; if (modalPushed) { modalPushed = false; ignorePop++; try { history.back(); } catch (e) { ignorePop--; } } };
+// Botão "voltar" do celular: volta para a tela anterior / fecha a janela, em vez de sair do aplicativo.
+let navStack = [], navLast = null, navLastK = '', navPop = false, modalPushed = false, ignorePop = 0;
+function navTrack() {
+  const s = { v: ui.view, d: ui.day, f: ui.dayFrom }, k = JSON.stringify(s);
+  if (navLast === null) { navLast = s; navLastK = k; return; }
+  if (k === navLastK) return;
+  if (!navPop) { navStack.push(navLast); try { history.pushState({ tt: 1 }, ''); } catch (e) {} }
+  navLast = s; navLastK = k;
+}
+addEventListener('popstate', () => {
+  if (ignorePop > 0) { ignorePop--; return; }
+  if (modalPushed) { modalPushed = false; $('#modal').innerHTML = ''; return; }
+  if (!auth.session || !navStack.length) return;
+  const s = navStack.pop(); navPop = true; ui.view = s.v; ui.day = s.d; ui.dayFrom = s.f;
+  try { render(); } finally { navPop = false; }
+});
 
 function dayModal(ds) {
   const i = info(ds), d = parse(ds), fut = ds > today();
@@ -1735,7 +1754,7 @@ const cloudFetch = async (path, opt = {}, token) => {
   const h = { apikey: CLOUD.key, 'Content-Type': 'application/json', ...(opt.headers || {}) };
   if (token) h.Authorization = 'Bearer ' + token; // sem token de usuário, só a chave (vale para chaves antigas "eyJ..." e novas "sb_publishable_...")
   const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 15000);
-  try { return await fetch(CLOUD.url.replace(/\/+$/, '') + path, { ...opt, headers: h, signal: ctl.signal }); } finally { clearTimeout(t); }
+  try { return await fetch(CLOUD.url.replace(/\/(rest|auth)\/v1.*$/, '').replace(/\/+$/, '') + path, { ...opt, headers: h, signal: ctl.signal }); } finally { clearTimeout(t); }
 };
 const metaLoad = u => { try { const m = JSON.parse(localStorage.getItem(SYNC_KEY + u) || 'null'); if (m) return m; } catch (e) {} return { stamp: {}, dead: {}, snap: {}, dirty: {}, since: 0, refresh: null, uid: null, fresh: true }; };
 const metaSave = () => { try { if (cloud.meta && curUser) localStorage.setItem(SYNC_KEY + curUser, JSON.stringify(cloud.meta)); } catch (e) {} };
@@ -1764,12 +1783,12 @@ function cloudTouch() {
   if (cloudDiff()) { metaSave(); cloudSetStatus(navigator.onLine ? 'pend' : 'offline'); clearTimeout(cloud.timer); cloud.timer = setTimeout(cloudSync, 1200); }
 }
 function cloudSetStatus(s) {
-  if (cloud.status === s) return; cloud.status = s;
+  cloud.status = s;
   const i = document.querySelector('#nav .sdot'); if (i) i.className = 'sdot ' + s;
   const l = $('#syncLine'); if (l) l.innerHTML = syncLine();
 }
 const SYNC_TXT = { ok: 'Sincronizado', pend: 'Alterações a enviar…', offline: 'Sem internet — alterações salvas no aparelho', auth: 'Entre de novo com internet para sincronizar', err: 'Falha ao sincronizar — tentando de novo', off: '' };
-const syncLine = () => `<i class="sdot ${cloud.status}"></i>${esc(SYNC_TXT[cloud.status] || '')}`;
+const syncLine = () => `<i class="sdot ${cloud.status}"></i><span class="st-${cloud.status}">${esc(SYNC_TXT[cloud.status] || '')}${cloud.status === 'err' && cloud.errMsg ? ' (' + esc(cloud.errMsg) + ')' : ''}</span>`;
 async function cloudToken() {
   const t = cloud.tok;
   if (t && t.exp > Date.now() + 60000) return t.access;
@@ -1824,8 +1843,8 @@ async function cloudSync() {
     let changed = false;
     for (let n = 0; n < 50; n++) {
       const r = await cloudFetch('/rest/v1/records?select=k,v,ts,dead,srv&srv=gt.' + m.since + '&order=srv.asc&limit=500', {}, token);
-      if (r.status === 401) { cloud.tok = null; throw new Error('401'); }
-      if (!r.ok) throw new Error('http' + r.status);
+      if (r.status === 401) { cloud.tok = null; throw new Error('baixar: 401 ' + (await cloudErr(r)).slice(0, 90)); }
+      if (!r.ok) throw new Error('baixar: HTTP ' + r.status + ' ' + (await cloudErr(r)).slice(0, 90));
       const rows = await r.json();
       if (!rows.length) break;
       cloud.applying = true; try { if (cloudApply(rows)) changed = true; } finally { cloud.applying = false; }
@@ -1841,14 +1860,15 @@ async function cloudSync() {
       const body = keys.map(k => { const dead = !(k in recs); sent[k] = dead ? m.dead[k] : m.stamp[k]; return { user_id: uid, k, v: dead ? null : recs[k], ts: sent[k], dead }; });
       for (let i = 0; i < body.length; i += 200) {
         const r = await cloudFetch('/rest/v1/records?on_conflict=user_id,k', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(body.slice(i, i + 200)) }, token);
-        if (r.status === 401) { cloud.tok = null; throw new Error('401'); }
-        if (!r.ok) throw new Error('http' + r.status);
+        if (r.status === 401) { cloud.tok = null; throw new Error('enviar: 401 ' + (await cloudErr(r)).slice(0, 90)); }
+        if (!r.ok) throw new Error('enviar: HTTP ' + r.status + ' ' + (await cloudErr(r)).slice(0, 90));
       }
       for (const k of keys) if ((m.dead[k] || m.stamp[k]) === sent[k]) delete m.dirty[k];
     }
     m.fresh = false; metaSave(); cloud.last = Date.now();
     cloudSetStatus(Object.keys(m.dirty).length ? 'pend' : 'ok');
   } catch (e) {
+    cloud.errMsg = e && e.message || '';
     if (e && e.auth) cloudSetStatus('auth');
     else if (!navigator.onLine || (e && (e.name === 'TypeError' || e.name === 'AbortError'))) cloudSetStatus('offline');
     else cloudSetStatus('err');
