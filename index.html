@@ -1733,7 +1733,7 @@ const SYNC_KEY = 'timetracker_sync_v1_u_';
 const cloud = { on: false, status: 'off', meta: null, tok: null, uid: null, timer: null, poll: null, busy: false, again: false, last: 0 };
 const cloudFetch = async (path, opt = {}, token) => {
   const h = { apikey: CLOUD.key, 'Content-Type': 'application/json', ...(opt.headers || {}) };
-  h.Authorization = 'Bearer ' + (token || CLOUD.key);
+  if (token) h.Authorization = 'Bearer ' + token; // sem token de usuário, só a chave (vale para chaves antigas "eyJ..." e novas "sb_publishable_...")
   const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 15000);
   try { return await fetch(CLOUD.url.replace(/\/+$/, '') + path, { ...opt, headers: h, signal: ctl.signal }); } finally { clearTimeout(t); }
 };
@@ -1889,7 +1889,7 @@ function cloudMsg(m) {
   if (m.includes('signups not allowed') || m.includes('signup is disabled')) return 'Criação de contas está desativada.';
   if (m.includes('rate') || m.includes('too many')) return 'Muitas tentativas. Aguarde um pouco.';
   if (m.includes('password')) return 'Senha recusada pelo servidor (mínimo de 6 caracteres).';
-  return 'Não foi possível concluir. Tente de novo.';
+  return m ? 'Não foi possível concluir (' + m.slice(0, 120) + ').' : 'Não foi possível concluir. Tente de novo.';
 }
 async function cloudLogin(email, pass) { // devolve {ok} | {offline:true} | {error}
   if (!navigator.onLine) return { offline: true };
