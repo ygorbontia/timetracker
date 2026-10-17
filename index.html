@@ -127,7 +127,7 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 20px; }
 .auth .row.opt { cursor: pointer; }
 .auth .row.opt:has(input:checked) { background: color-mix(in srgb, var(--accent) 10%, transparent); }
 .auth .row.opt input { width: 18px; height: 18px; flex: none; accent-color: var(--accent); margin: 0; }
-.rcard .row .btn { min-width: 104px; justify-content: center; }
+.rcard .row .btn { min-width: 92px; justify-content: center; }
 .auth .row strong { display: block; font-size: .95rem; }
 .auth .row small { display: block; color: var(--muted); font-size: .8rem; margin-top: 2px; }
 .auth .row svg { width: 18px; height: 18px; fill: none; stroke: var(--muted); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
@@ -964,7 +964,7 @@ function viewMetas() {
   const cards = S.goals.map(g => `<div class="card rcard"><div class="rtop"><div><div class="value" style="margin-top:0">${hm(g.hours * 3600)}</div><div class="small muted">por dia</div></div>${ruleBadge(g)}</div>
     <div class="rdesc">${esc(ruleDesc(g))}</div>
     <div class="small muted mono">${fmtBR(g.startDate)}${g.endDate ? ' a ' + fmtBR(g.endDate) : ' em diante'}</div>
-    <div class="row" style="margin-top:4px"><button class="btn sm" data-act="editrule" data-id="${esc(String(g.id))}">Editar</button><button class="btn sm ghost danger" data-act="delrule" data-id="${esc(String(g.id))}">Excluir</button></div></div>`).join('');
+    <div class="row" style="margin-top:4px"><button class="btn sm" data-act="editrule" data-id="${esc(String(g.id))}">Editar</button><button class="btn sm" data-act="duprule" data-id="${esc(String(g.id))}">Duplicar</button><button class="btn sm ghost danger" data-act="delrule" data-id="${esc(String(g.id))}">Excluir</button></div></div>`).join('');
   return `<div class="pagehead"><div><p class="eyebrow">Metas</p><h1>Metas e rotinas</h1></div><div class="row"><button class="btn start" data-act="newrule">Nova meta</button><button class="btn" data-act="newroutine">Nova rotina</button></div></div>
   <h2 class="sumhead">Metas recorrentes</h2>
   ${S.goals.length ? `<div class="rgrid">${cards}</div><p class="small muted">Se duas metas valem no mesmo dia, vale a que foi criada por último. A meta digitada em um dia específico vale mais que todas.</p>` : `<div class="card empty"><p><b>Nenhuma meta recorrente ainda.</b></p><p class="small muted">Crie uma para que a meta diária seja preenchida sozinha nos dias que você escolher.</p><button class="btn start" data-act="newrule">Criar a primeira meta</button></div>`}
@@ -1309,19 +1309,24 @@ function noteModal(ds, id) {
 }
 function refreshDay(ds) { if (ui.view === 'hoje' || ui.view === 'dia') repaintRoutine(ds); else render(); }
 
-function routineModal(r) {
-  const t = today(), isNew = !r;
+function routineModal(r, copy = false) {
+  const t = today(), isNew = !r || copy;
+  if (copy && r) { // cópia: atividades sem os ids da original (marcações não se misturam); período começa hoje ou na data futura
+    const st = r.startDate > t ? r.startDate : t;
+    r = { ...r, startDate: st, endDate: r.endDate >= st ? r.endDate : addDays(addYears(st, 1), -1), items: r.items.map(x => ({ t: x.t, a: x.a })) };
+  }
   const start = r ? r.startDate : t, end = r ? r.endDate : addDays(addYears(t, 1), -1), wd = r ? r.weekday : parse(t).getDay();
-  openModal(`<div><p class="eyebrow">${isNew ? 'Nova rotina' : 'Editar rotina'}</p><h2 style="font-size:1.25rem;margin-top:4px">Rotina semanal</h2></div>
-  <form id="routineForm" data-id="${r ? esc(r.id) : ''}" class="stack" onsubmit="return false">
+  openModal(`<div><p class="eyebrow">${copy ? 'Duplicar rotina' : isNew ? 'Nova rotina' : 'Editar rotina'}</p><h2 style="font-size:1.25rem;margin-top:4px">Rotina semanal</h2></div>
+  <form id="routineForm" data-id="${r && !copy ? esc(r.id) : ''}" class="stack" onsubmit="return false">
     <div class="field"><label class="label" for="qWd">Dia da semana</label><select id="qWd">${opts(WD.map((n, i) => [i, n]), wd)}</select></div>
     <div class="pair">
       <div class="field"><label class="label" for="qStart">Data de início</label><input type="date" id="qStart" value="${start}" min="${CAL_MIN}" max="${maxDate()}"></div>
       <div class="field"><label class="label" for="qEnd">Data de término</label><input type="date" id="qEnd" value="${end}" min="${CAL_MIN}" max="${maxDate()}"></div>
     </div>
     <p class="small muted">O período pode ter no máximo 2 anos.${isNew ? '' : ' As mudanças valem a partir de hoje. Os dias que já passaram mantêm a rotina que tinham.'}</p>
+    ${copy ? '<p class="small muted">Esta é uma cópia: a rotina original não muda. Ajuste o dia, o horário e as atividades. Se o dia e o período forem os mesmos da original, esta nova passa a valer no lugar dela.</p>' : ''}
     ${editorHTML(r ? byTime(r.items) : [])}
-    <div class="foot"><button type="button" class="btn ghost" data-act="close">Cancelar</button><button type="button" class="btn start" data-act="saveroutine">${isNew ? 'Criar rotina' : 'Salvar'}</button></div>
+    <div class="foot"><button type="button" class="btn ghost" data-act="close">Cancelar</button><button type="button" class="btn start" data-act="saveroutine">${isNew ? (copy ? 'Criar cópia' : 'Criar rotina') : 'Salvar'}</button></div>
   </form>`);
 }
 function saveRoutine() {
@@ -1350,7 +1355,7 @@ function routineCardMeta(r) {
   return `<div class="card rcard"><div class="rtop"><div><div class="value" style="margin-top:0;font-size:1.25rem">${WD[r.weekday]}</div><div class="small muted">${its.length} atividade${its.length === 1 ? '' : 's'}</div></div>${ruleBadge(r)}</div>
     <ul class="rprev mono">${its.slice(0, 4).map(x => `<li><span>${x.t}</span> ${esc(capAct(x.a))}</li>`).join('')}${more > 0 ? `<li class="muted">+ ${more}</li>` : ''}</ul>
     <div class="small muted mono">${fmtBR(r.startDate)} a ${fmtBR(r.endDate)}</div>
-    <div class="row" style="margin-top:4px"><button class="btn sm" data-act="editroutine" data-id="${esc(r.id)}">Editar</button><button class="btn sm ghost danger" data-act="delroutine" data-id="${esc(r.id)}">Excluir</button></div></div>`;
+    <div class="row" style="margin-top:4px"><button class="btn sm" data-act="editroutine" data-id="${esc(r.id)}">Editar</button><button class="btn sm" data-act="duproutine" data-id="${esc(r.id)}">Duplicar</button><button class="btn sm ghost danger" data-act="delroutine" data-id="${esc(r.id)}">Excluir</button></div></div>`;
 }
 
 // tela de um dia (calendário): igual à de Hoje, sem cronômetro
@@ -1647,8 +1652,13 @@ function saveDay() {
 const NTH = [[1, 'Primeira'], [2, 'Segunda'], [3, 'Terceira'], [4, 'Quarta'], [-1, 'Última']];
 const RTYPES = [['DAILY', 'Todos os dias'], ['WEEKLY', 'Semanal'], ['MONTHLY_DATE', 'Mensal, por data'], ['MONTHLY_RELATIVE', 'Mensal, relativo'], ['WORKDAYS', 'Dias úteis (seg a sex)'], ['CUSTOM', 'Personalizado']];
 const opts = (list, sel) => list.map(([v, l]) => `<option value="${v}" ${String(v) === String(sel) ? 'selected' : ''}>${l}</option>`).join('');
-function ruleModal(g) {
-  const t = today(), td = parse(t), isNew = !g;
+function ruleModal(g, copy = false) {
+  const t = today(), td = parse(t), isNew = !g || copy;
+  if (copy && g) { // cópia: começa hoje (ou na data de início, se for futura) e não mexe na meta original
+    const st = g.startDate > t ? g.startDate : t;
+    const o0 = parse(g.startDate || t); // dia da semana / posição no mês implícitos na data original não mudam ao trocar a data de início
+    g = { ...g, weekday: g.weekday ?? o0.getDay(), nth: g.nth ?? Math.ceil(o0.getDate() / 7), dom: g.dom ?? o0.getDate(), startDate: st, endDate: g.endDate && g.endDate >= st ? g.endDate : addDays(addYears(st, 1), -1) };
+  }
   const type = g ? g.type : 'WORKDAYS', sec = g ? Math.round(g.hours * 3600) : 7200;
   const start = g ? g.startDate : t, end = g ? (g.endDate || addDays(addYears(start, 1), -1)) : addDays(addYears(t, 1), -1);
   const sd = parse(start), wd = g ? (g.weekday ?? sd.getDay()) : td.getDay();
@@ -1656,8 +1666,8 @@ function ruleModal(g) {
   const dom = g ? (g.dom ?? sd.getDate()) : td.getDate();
   const cd = g && g.customDays && g.customDays.length ? g.customDays : [1, 2, 3, 4, 5];
   const types = type === 'NONE' ? [['NONE', 'Somente um dia'], ...RTYPES] : RTYPES;
-  openModal(`<div><p class="eyebrow">${isNew ? 'Nova meta' : 'Editar meta'}</p><h2 style="font-size:1.25rem;margin-top:4px">Meta recorrente</h2></div>
-  <form id="ruleForm" data-id="${g ? esc(String(g.id)) : ''}" class="stack" onsubmit="return false">
+  openModal(`<div><p class="eyebrow">${copy ? 'Duplicar meta' : isNew ? 'Nova meta' : 'Editar meta'}</p><h2 style="font-size:1.25rem;margin-top:4px">Meta recorrente</h2></div>
+  <form id="ruleForm" data-id="${g && !copy ? esc(String(g.id)) : ''}" class="stack" onsubmit="return false">
     <div class="field"><span class="label">Meta por dia</span>${hmIn('rg', sec)}<span class="small muted">Use 0h para marcar um dia de folga.</span></div>
     <div class="field"><label class="label" for="rType">Repetir</label><select id="rType">${opts(types, type)}</select><span class="small tone-acc" id="rDesc"></span></div>
     <div class="field" id="fWd"><label class="label" for="rWd">Dia da semana</label><select id="rWd">${opts(WDN.map((n, i) => [i, n.charAt(0).toUpperCase() + n.slice(1)]), wd)}</select></div>
@@ -1670,8 +1680,9 @@ function ruleModal(g) {
     </div>
     <p class="small muted">O período pode ter no máximo 2 anos.</p>
     <p class="small tone-warn" id="rWarn"></p>
+    ${copy ? '<p class="small muted">Esta é uma cópia: a meta original não muda. Ajuste o dia e as horas. Se o dia e o período forem os mesmos da original, esta nova passa a valer no lugar dela.</p>' : ''}
     ${isNew ? '' : '<p class="small muted">As mudanças valem a partir de hoje. Os dias que já passaram mantêm a meta que tinham.</p>'}
-    <div class="foot"><button type="button" class="btn ghost" data-act="close">Cancelar</button><button type="button" class="btn start" data-act="saverule">${isNew ? 'Criar meta' : 'Salvar'}</button></div>
+    <div class="foot"><button type="button" class="btn ghost" data-act="close">Cancelar</button><button type="button" class="btn start" data-act="saverule">${isNew ? (copy ? 'Criar cópia' : 'Criar meta') : 'Salvar'}</button></div>
   </form>`);
   ruleSync();
 }
@@ -1770,6 +1781,7 @@ document.addEventListener('click', e => {
     case 'gscopeback': { const pr = pendingRule; pendingRule = null; if (pr) ruleModal({ id: pr.id, ...pr.f }); else closeModal(); break; }
     case 'rscope': { const pr = pendingRoutine; if (!pr) break; pendingRoutine = null; updateRoutine(pr.id, pr.f, b.dataset.s === 'all' ? 'all' : 'future'); closeModal(); toast(b.dataset.s === 'all' ? 'Rotina atualizada em todas as datas do período.' : 'Rotina atualizada. Vale a partir de hoje.'); render(); break; }
     case 'rscopeback': { const pr = pendingRoutine; pendingRoutine = null; if (pr) routineModal({ id: pr.id, ...pr.f }); else closeModal(); break; }
+    case 'duproutine': { const r = S.routines.find(x => x.id === b.dataset.id); if (r) routineModal(r, true); break; }
     case 'editroutine': { const r = S.routines.find(x => x.id === b.dataset.id); if (r) routineModal(r); break; }
     case 'saveroutine': saveRoutine(); break;
     case 'delroutine':
@@ -1808,6 +1820,7 @@ document.addEventListener('click', e => {
     case 'deltask':
       if (b.dataset.armed !== '1') { b.style.width = b.offsetWidth + 'px'; b.dataset.armed = '1'; b.textContent = 'Confirmar'; clearTimeout(b._t); b._t = setTimeout(() => { b.dataset.armed = ''; b.textContent = 'Excluir'; b.style.width = ''; }, 3000); break; }
       deleteTask(b.dataset.id); toast('Tarefa excluída.'); go(); break;
+    case 'duprule': { const g = S.goals.find(x => String(x.id) === b.dataset.id); if (g) ruleModal(g, true); break; }
     case 'editrule': { const g = S.goals.find(x => String(x.id) === b.dataset.id); if (g) ruleModal(g); break; }
     case 'saverule': saveRule(); break;
     case 'delrule':
