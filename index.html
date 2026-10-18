@@ -1511,7 +1511,7 @@ function accountModal(msg) {
           ${CLOUD ? '<button type="button" class="row" data-act="syncnow"><span><strong>Sincronizar agora</strong></span>' + CHEV + '</button>' : ''}
           ${bio.ok ? `<button type="button" class="row" role="switch" aria-checked="${out && auth.users[out] && auth.users[out].bio ? 'true' : 'false'}" data-act="${out && auth.users[out] && auth.users[out].bio ? 'biooff' : 'bioon'}"><span><strong>Desbloquear com a digital</strong></span><i class="tgl" aria-hidden="true"></i></button>` : ''}
           <button type="button" class="row" data-act="authsub" data-s="pass"><span><strong>Alterar senha</strong></span>${CHEV}</button>
-          <button type="button" class="row" data-act="authout"><span><strong>Sair da conta</strong></span>${CHEV}</button>
+          <button type="button" class="row" data-act="authout"><span><strong>Sair</strong></span>${CHEV}</button>
         </div>
         <button type="button" class="row danger" data-act="authsub" data-s="del"><span><strong>Excluir conta</strong><small>Apaga a conta e todos os dados dela</small></span>${CHEV}</button>
         <div class="foot"><button type="button" class="btn ghost" data-act="close">Fechar</button></div></div>`);
