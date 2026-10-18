@@ -116,8 +116,9 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 20px; }
 .auth .peek:hover, .auth .peek.on { color: var(--accent-fg); }
 .auth .peek svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .auth .who { display: flex; align-items: center; gap: 14px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-2); }
-.auth .av { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 1.2rem; color: var(--accent-fg); background: color-mix(in srgb, var(--accent) 14%, var(--bg)); border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); box-shadow: 0 0 18px -6px var(--accent); }
-.auth .who strong { display: block; font-size: 1.05rem; }
+.auth .av { flex: none; min-width: 46px; min-height: 46px; aspect-ratio: 1 / 1; width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 1.2rem; color: var(--accent-fg); background: color-mix(in srgb, var(--accent) 14%, var(--bg)); border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); box-shadow: 0 0 18px -6px var(--accent); }
+.auth .who > div { min-width: 0; }
+.auth .who strong { overflow-wrap: anywhere; display: block; font-size: 1.05rem; }
 .auth .who .small { display: flex; align-items: center; gap: 6px; color: var(--ok-fg); margin-top: 2px; }
 .auth .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 8px var(--ok); }
 .auth .rows { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
@@ -125,6 +126,10 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 20px; }
 .auth .rows .row + .row { border-top: 1px solid var(--line); }
 .auth .row:hover { background: var(--surface-2); }
 .auth .row.opt { cursor: pointer; }
+.tgl { display: block; box-sizing: border-box; flex: none; position: relative; width: 44px; height: 26px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); transition: background .18s, border-color .18s; }
+.tgl::after { content: ''; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%; background: var(--muted); transition: transform .18s, background .18s; }
+.row[aria-checked="true"] .tgl { background: color-mix(in srgb, var(--accent) 28%, var(--bg)); border-color: var(--accent); }
+.row[aria-checked="true"] .tgl::after { transform: translateX(18px); background: var(--accent); }
 .bioBtn { display: flex; align-items: center; justify-content: center; gap: 10px; }
 .bioBtn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 .bioOr { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: .78rem; }
@@ -1503,10 +1508,10 @@ function accountModal(msg) {
       openModal(`<div class="auth stack">${authHead('Conta', 'Minha conta')}
         ${user}
         <div class="rows">
-          ${CLOUD ? '<button type="button" class="row" data-act="syncnow"><span><strong>Sincronizar agora</strong><small>Envia e busca as alterações</small></span>' + CHEV + '</button>' : ''}
-          ${bio.ok ? (out && auth.users[out] && auth.users[out].bio ? `<button type="button" class="row" data-act="biooff"><span><strong>Desbloquear com a digital</strong><small>Ativado neste aparelho. Toque para desativar</small></span>${CHEV}</button>` : `<button type="button" class="row" data-act="bioon"><span><strong>Desbloquear com a digital</strong><small>Entre sem digitar a senha neste aparelho</small></span>${CHEV}</button>`) : ''}
-          <button type="button" class="row" data-act="authsub" data-s="pass"><span><strong>Alterar senha</strong><small>Troque a senha de acesso</small></span>${CHEV}</button>
-          <button type="button" class="row" data-act="authout"><span><strong>Sair da conta</strong><small>Seus dados ficam salvos</small></span>${CHEV}</button>
+          ${CLOUD ? '<button type="button" class="row" data-act="syncnow"><span><strong>Sincronizar agora</strong></span>' + CHEV + '</button>' : ''}
+          ${bio.ok ? `<button type="button" class="row" role="switch" aria-checked="${out && auth.users[out] && auth.users[out].bio ? 'true' : 'false'}" data-act="${out && auth.users[out] && auth.users[out].bio ? 'biooff' : 'bioon'}"><span><strong>Desbloquear com a digital</strong></span><i class="tgl" aria-hidden="true"></i></button>` : ''}
+          <button type="button" class="row" data-act="authsub" data-s="pass"><span><strong>Alterar senha</strong></span>${CHEV}</button>
+          <button type="button" class="row" data-act="authout"><span><strong>Sair da conta</strong></span>${CHEV}</button>
         </div>
         <button type="button" class="row danger" data-act="authsub" data-s="del"><span><strong>Excluir conta</strong><small>Apaga a conta e todos os dados dela</small></span>${CHEV}</button>
         <div class="foot"><button type="button" class="btn ghost" data-act="close">Fechar</button></div></div>`);
