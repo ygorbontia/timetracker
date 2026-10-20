@@ -1,4 +1,4 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><style>html{color-scheme:dark}body{margin:0;touch-action:manipulation}[hidden]{display:none!important}</style>
+<!doctype html><html lang="pt-BR"><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-UXeeAUO8sqMXPcdYTzklqYuFpzKJgyBr128Bo8tCsZ8=' 'sha256-fEqu4i9Z/F8jcfJQAv3FAo2ciCtueMqM7fPqiLnvp8A='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://*.supabase.co; frame-src 'none'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><style>html{color-scheme:dark}body{margin:0;touch-action:manipulation}[hidden]{display:none!important}</style>
 <title>TimeTracker & Study Planner</title>
 
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -9,6 +9,7 @@
 /* Tema: claro, escuro ou automático (segue o aparelho). A escolha fica só neste aparelho. */
 (function () {
   var K = 'timetracker_theme_v1', d = document.documentElement, mq = window.matchMedia && matchMedia('(prefers-color-scheme: light)');
+  try { if (window.top !== window.self) { d.style.display = 'none'; try { window.top.location = window.self.location; } catch (e) {} } } catch (e) { d.style.display = 'none'; } // não roda dentro de outro site
   function pref() { try { var v = localStorage.getItem(K); return v === 'light' || v === 'dark' ? v : 'auto'; } catch (e) { return 'auto'; } }
   function apply() {
     var p = pref(), t = p === 'auto' ? (mq && mq.matches ? 'light' : 'dark') : p;
@@ -154,6 +155,38 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 20px; }
 .auth .row:hover { background: var(--surface-2); }
 .auth .row.opt { cursor: pointer; }
 input[readonly] { opacity: .72; cursor: not-allowed; }
+.rgwrap { gap: 16px; }
+.rgcard { padding: 14px 14px 12px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.rghd { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.rghd h2 { font-size: 1.05rem; }
+.rgpick { margin: -2px 0 0; }
+.rgsel { width: auto; max-width: 100%; font-size: .84rem; padding: 6px 28px 6px 10px; }
+.rgnav { display: flex; gap: 6px; flex: none; }
+.rgnav .iconbtn.off { visibility: hidden; }
+.rgscroll { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; -ms-overflow-style: none; overscroll-behavior-x: contain; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.rgscroll::-webkit-scrollbar { display: none; width: 0; height: 0; }
+table.rgt { border-collapse: separate; border-spacing: 0; table-layout: fixed; font-size: .86rem; width: max-content; }
+.rgt th, .rgt td { height: 32px; padding: 0; border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent); border-right: 1px solid color-mix(in srgb, var(--line) 55%, transparent); }
+.rgt tbody tr:last-child th, .rgt tbody tr:last-child td { border-bottom: 0; }
+.rgt thead th { background: var(--surface-2); color: var(--muted); font-weight: 600; font-size: .76rem; letter-spacing: .02em; }
+.rgt .s1, .rgt .s2 { position: sticky; z-index: 2; background: var(--surface); text-align: left; font-weight: 500; }
+.rgt thead .s1, .rgt thead .s2 { background: var(--surface-2); z-index: 3; text-align: center; }
+.rgt .s1 { left: 0; width: 58px; min-width: 58px; max-width: 58px; text-align: center; color: var(--accent-fg); font-size: .82rem; }
+.rgt .s2 { left: 58px; width: 150px; min-width: 150px; max-width: 150px; padding: 0 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-shadow: 6px 0 8px -6px rgba(0, 0, 0, .35); }
+.rgt .d, .rgt .c { width: var(--cw, 56px); min-width: var(--cw, 56px); max-width: var(--cw, 56px); text-align: center; white-space: nowrap; }
+.rgt th.d.td { color: var(--accent-fg); box-shadow: inset 0 -2px 0 var(--accent); }
+.rgt th.d.cu { position: relative; }
+.rgt th.d.cu i { position: absolute; top: 4px; right: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--violet-fg); }
+.rgt td.c { font-size: .9rem; font-weight: 700; line-height: 1; }
+.rgt td.c.yes { background: color-mix(in srgb, var(--ok) 28%, var(--surface)); color: var(--ok-fg); }
+.rgt td.c.no { background: color-mix(in srgb, var(--bad) 30%, var(--surface)); color: var(--bad-fg); }
+.rgt td.c.na { color: var(--muted); opacity: .5; font-weight: 400; background: repeating-linear-gradient(135deg, transparent 0 5px, color-mix(in srgb, var(--line) 55%, transparent) 5px 6px); }
+.rgt td.c.fut { opacity: .55; }
+.rgt td.c.td { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent); }
+.sw.yes { background: color-mix(in srgb, var(--ok) 45%, var(--surface)); border-color: var(--ok); }
+.sw.no { background: color-mix(in srgb, var(--bad) 45%, var(--surface)); border-color: var(--bad); }
+.sw.cu { background: var(--violet-fg); border-radius: 50%; }
+@media (max-width: 480px) { .rgcard { padding: 12px 10px 10px; } .rgt .s1 { width: 50px; min-width: 50px; max-width: 50px; left: 0; } .rgt .s2 { left: 50px; width: 104px; min-width: 104px; max-width: 104px; padding: 0 8px; } }
 .seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; }
 .seg button { padding: 9px 6px; border-radius: 9px; border: 1px solid transparent; background: transparent; color: var(--muted); font-weight: 600; font-size: .9rem; }
 .seg button:hover { color: var(--fg); }
@@ -919,11 +952,73 @@ function deleteRoutine(id) { freezeRoutinePast(); S.routines = S.routines.filter
 // ---- backup e restauração ----
 const BACKUP_APP = 'timetracker-study', BACKUP_MAX = 20 * 1024 * 1024;
 const isRec = v => !!v && typeof v === 'object' && !Array.isArray(v);
-const recList = a => (Array.isArray(a) ? a : []).filter(isRec);
-const dayMap = r => { const o = {}; if (isRec(r)) for (const k of Object.keys(r)) if (/^\d{4}-\d{2}-\d{2}$/.test(k) && isRec(r[k])) o[k] = r[k]; return o; };
-function normData(o) { // só os campos conhecidos, com o formato certo (o cronômetro não entra: fica o que está rodando agora)
+// ---- validação de tudo que vem de fora (backup, nuvem): só formatos conhecidos entram; o resto é descartado ----
+const DATE_V = /^\d{4}-\d{2}-\d{2}$/, ID_RE = /^[A-Za-z0-9_-]{1,64}$/, TIME_RE_V = /^([01]\d|2[0-3]):[0-5]\d$/;
+const okDate = v => { if (typeof v !== 'string' || !DATE_V.test(v) || v < '1900-01-01' || v > '2200-12-31') return false; const d = new Date(v + 'T00:00:00Z'); return !isNaN(d) && d.toISOString().slice(0, 10) === v; };
+const okNum = (v, lo, hi) => typeof v === 'number' && isFinite(v) && v >= lo && v <= hi;
+const okInt = (v, lo, hi) => okNum(v, lo, hi) && Number.isInteger(v);
+const capStr = (v, max) => (typeof v === 'string' ? v.slice(0, max) : typeof v === 'number' && isFinite(v) ? String(v).slice(0, max) : '');
+const GOAL_TYPES = ['NONE', 'DAILY', 'WEEKLY', 'MONTHLY_DATE', 'MONTHLY_RELATIVE', 'WORKDAYS', 'CUSTOM'], STATUSES = ['PENDENTE', 'CONCLUIDO', 'NAO_ESTUDADO'];
+function sanOrd(x, out) { if (x.o !== undefined && x.o !== null) { if (!okNum(x.o, -1e6, 1e6)) return false; out.o = x.o; } return true; }
+function sanSession(x) {
+  if (!isRec(x)) return null;
+  const goal = x.goal === undefined ? 0 : x.goal, secs = x.secs === undefined ? 0 : x.secs, status = x.status === undefined ? 'PENDENTE' : x.status;
+  if (!okNum(goal, 0, 1e7) || !okNum(secs, 0, 1e7) || !STATUSES.includes(status)) return null;
+  const o = { goal, secs, status, notes: capStr(x.notes, 5000), ov: x.ov === true, fin: x.fin === true };
+  if (x.rst === true) o.rst = true;
+  return o;
+}
+function sanItems(a) {
+  if (!Array.isArray(a)) return null;
+  const seen = new Set(), out = [];
+  for (const x of a.slice(0, 300)) { if (!isRec(x) || !ID_RE.test(x.id) || !TIME_RE_V.test(x.t) || typeof x.a !== 'string' || !x.a.trim() || seen.has(x.id)) continue; seen.add(x.id); out.push({ id: x.id, t: x.t, a: x.a.slice(0, 200) }); }
+  return out;
+}
+function sanRday(x) {
+  if (!isRec(x)) return null;
+  const o = { items: x.items === null || x.items === undefined ? null : sanItems(x.items), marks: {}, notes: {} };
+  if (o.items === null && x.items !== null && x.items !== undefined) return null;
+  if (Array.isArray(x.items) && x.items.length && !o.items.length) return null; // tudo inválido: descarta o dia
+  if (isRec(x.marks)) for (const k of Object.keys(x.marks).slice(0, 600)) if (ID_RE.test(k) && typeof x.marks[k] === 'boolean') o.marks[k] = x.marks[k];
+  if (isRec(x.notes)) for (const k of Object.keys(x.notes).slice(0, 600)) if (ID_RE.test(k) && typeof x.notes[k] === 'string') o.notes[k] = x.notes[k].slice(0, 300);
+  if (x.fz === true) o.fz = true;
+  if (x.rst === true) o.rst = true;
+  return o;
+}
+function sanGoal(x) {
+  if (!isRec(x) || !ID_RE.test(String(x.id)) || !GOAL_TYPES.includes(x.type) || !okNum(x.hours, 0, 24) || !okDate(x.startDate) || !okDate(x.endDate)) return null;
+  const o = { id: String(x.id), type: x.type, hours: x.hours, startDate: x.startDate, endDate: x.endDate };
+  if (x.customDays !== undefined) { if (!Array.isArray(x.customDays) || !x.customDays.every(d => okInt(d, 0, 6))) return null; o.customDays = [...new Set(x.customDays)]; }
+  if (x.weekday !== undefined && x.weekday !== null) { if (!okInt(x.weekday, 0, 6)) return null; o.weekday = x.weekday; }
+  if (x.nth !== undefined && x.nth !== null) { if (![1, 2, 3, 4, -1].includes(x.nth)) return null; o.nth = x.nth; }
+  if (x.dom !== undefined && x.dom !== null) { if (!okInt(x.dom, 1, 31)) return null; o.dom = x.dom; }
+  return sanOrd(x, o) ? o : null;
+}
+function sanRoutine(x) {
+  if (!isRec(x) || !ID_RE.test(String(x.id)) || !okInt(x.weekday, 0, 6) || !okDate(x.startDate) || !okDate(x.endDate)) return null;
+  const items = sanItems(x.items); if (!items) return null;
+  const o = { id: String(x.id), weekday: x.weekday, startDate: x.startDate, endDate: x.endDate, items };
+  return sanOrd(x, o) ? o : null;
+}
+function sanTask(x) {
+  if (!isRec(x) || !ID_RE.test(String(x.id)) || !okInt(x.n === undefined ? 1 : x.n, 1, 1e6)) return null;
+  const rv = Array.isArray(x.rv) ? x.rv : ['', '', ''], d0 = x.d0 === undefined || x.d0 === null ? '' : x.d0;
+  const ex = x.ex === undefined ? 0 : x.ex, hit = x.hit === undefined ? 0 : x.hit;
+  if ((d0 !== '' && !okDate(d0)) || rv.length > 3 || !rv.every(d => d === '' || d === null || okDate(d)) || !okInt(ex, 0, 1e6) || !okInt(hit, 0, 1e6)) return null;
+  return { id: String(x.id), n: x.n === undefined ? 1 : x.n, trail: capStr(x.trail, 20), aula: capStr(x.aula, 20), disc: capStr(x.disc, 200), d0, rv: [0, 1, 2].map(k => rv[k] || ''), ex, hit };
+}
+function sanTimer(x) {
+  if (!isRec(x) || !okNum(x.startTs, 0, 1e15) || !okNum(x.acc, 0, 1e10)) return null;
+  const days = {}; if (isRec(x.days)) for (const k of Object.keys(x.days).slice(0, 400)) if (okDate(k) && okNum(x.days[k], 0, 1e10)) days[k] = x.days[k];
+  return { running: x.running === true, startTs: x.startTs, acc: x.acc, days, ver: okInt(x.ver === undefined ? 0 : x.ver, 0, 1e9) ? (x.ver || 0) : 0 };
+}
+const SAN = { sessions: sanSession, rdays: sanRday, goals: sanGoal, tasks: sanTask, routines: sanRoutine };
+const MAXN = { goals: 2000, tasks: 5000, routines: 2000, days: 20000 };
+function dayMap(r, fn) { const o = {}; if (isRec(r)) for (const k of Object.keys(r).slice(0, MAXN.days)) { if (!okDate(k)) continue; const v = fn(r[k]); if (v) o[k] = v; } return o; }
+function listOf(a, fn, max) { const seen = new Set(), out = []; if (Array.isArray(a)) for (const x of a.slice(0, max)) { const v = fn(x); if (v && !seen.has(v.id)) { seen.add(v.id); out.push(v); } } return out; }
+function normData(o) { // só os campos conhecidos, no formato certo (o cronômetro não entra: fica o que está rodando agora)
   o = isRec(o) ? o : {};
-  return { sessions: dayMap(o.sessions), goals: recList(o.goals), tasks: normTasks(recList(o.tasks)), routines: recList(o.routines), rdays: dayMap(o.rdays), closed: typeof o.closed === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(o.closed) ? o.closed : null };
+  return { sessions: dayMap(o.sessions, sanSession), goals: listOf(o.goals, sanGoal, MAXN.goals), tasks: normTasks(listOf(o.tasks, sanTask, MAXN.tasks)), routines: listOf(o.routines, sanRoutine, MAXN.routines), rdays: dayMap(o.rdays, sanRday), closed: okDate(o.closed) ? o.closed : null };
 }
 const backupCounts = d => ({ days: Object.keys(d.sessions).length, goals: d.goals.length, routines: d.routines.length, tasks: d.tasks.length });
 function backupMake(st, at) {
@@ -945,6 +1040,41 @@ const USER_LOGIN_RE = /^[a-z0-9_.-]{3,20}$/; // login também aceita usuários a
 const firstName = v => { const w = String(v || '').trim().split(/\s+/)[0] || ''; return w ? w.charAt(0).toLocaleUpperCase('pt-BR') + w.slice(1).toLocaleLowerCase('pt-BR') : ''; };
 const cleanName = v => String(v || '').replace(/\s+/g, ' ').trim().slice(0, 40);
 const nameOK = v => { const n = cleanName(v); return n.length >= 2 && /\p{L}/u.test(n); };
+// ---- rotina semanal: uma tabela por dia da semana (linhas = atividades da rotina recorrente, colunas = datas) ----
+const actKey = x => x.t + '|' + capAct(x.a).toLocaleLowerCase('pt-BR');
+const rgList = wd => S.routines.filter(r => r.weekday === wd).sort((a, b) => a.startDate < b.startDate ? -1 : a.startDate > b.startDate ? 1 : 0);
+function rgActive(wd, td) { let a = null; for (const r of S.routines) if (r.weekday === wd && td >= r.startDate && td <= r.endDate) a = r; return a; } // a que vale hoje (a criada por último vence)
+function rgPick(wd, td) { // a rotina mostrada: a escolhida; senão a ativa hoje; senão a próxima; senão a mais recente
+  const L = rgList(wd); if (!L.length) return null;
+  const c = L.find(r => String(r.id) === String(ui.rgSel[wd])); if (c) return c;
+  return rgActive(wd, td) || L.find(r => r.startDate > td) || L[L.length - 1];
+}
+function rgOwner(wd, d) { // de qual rotina é um dia antigo que segue o modelo anterior: a que o cobre, ou a mais próxima
+  let best = null, bd = Infinity;
+  for (const r of rgList(wd)) { const x = d < r.startDate ? parse(r.startDate) - parse(d) : d > r.endDate ? parse(d) - parse(r.endDate) : 0; if (x <= bd) { bd = x; best = r; } }
+  return best;
+}
+function routineGrid(wd, td, pick) {
+  const dates = new Set();
+  if (pick) {
+    for (const d of routineDates(pick)) if (routineFor(d) === pick) dates.add(d);
+    for (const d of Object.keys(S.rdays)) { const rd = S.rdays[d]; if (rd && rd.fz && rd.items && parse(d).getDay() === wd && rgOwner(wd, d) === pick) dates.add(d); } // dias que já passaram e seguem o modelo antigo
+  }
+  const cols = [...dates].sort().map(ds => { const R = dayRoutine(ds); return { ds, custom: R.custom, items: R.items }; });
+  const rm = new Map();
+  for (const c of cols) if (!c.custom) for (const x of c.items) { const k = actKey(x); if (!rm.has(k)) rm.set(k, { key: k, t: x.t, a: capAct(x.a) }); } // rotinas específicas de um dia não criam linhas
+  const rows = [...rm.values()].sort((a, b) => a.t < b.t ? -1 : a.t > b.t ? 1 : a.a < b.a ? -1 : a.a > b.a ? 1 : 0);
+  const cells = {}; let done = 0, miss = 0;
+  for (const r of rows) {
+    const o = cells[r.key] = {};
+    for (const c of cols) {
+      const it = c.items.find(x => actKey(x) === r.key);
+      o[c.ds] = !it ? 'na' : it.m === true ? 'yes' : it.m === false ? 'no' : 'none';
+      if (c.ds <= td) { if (o[c.ds] === 'yes') done++; else if (o[c.ds] === 'no') miss++; }
+    }
+  }
+  return { rows, cols: cols.map(c => ({ ds: c.ds, custom: c.custom })), cells, done, miss };
+}
 /*LOGIC-END*/
 
 // ---------- UI ----------
@@ -957,14 +1087,15 @@ const ICON = {
   metas: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12h.01"/>',
   desemp: '<path d="M4 20V10M10 20V4M16 20v-8M2 20h20"/>',
   plan: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/>',
+  rotina: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M3 14h18M9 4v16M15 4v16"/>',
   conta: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>',
   config: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
 };
-const NAV = [['hoje', 'Hoje'], ['semana', 'Essa Semana', 'Semana'], ['mes', 'Esse Mês', 'Mês'], ['cal', 'Calendário'], ['plan', 'Planilha de Estudos', 'Planilha'], ['metas', 'Metas e Rotinas', 'Metas'], ['desemp', 'Desempenho'], ['conta', 'Conta'], ['config', 'Configurações', 'Config.']];
+const NAV = [['hoje', 'Hoje'], ['semana', 'Essa Semana', 'Semana'], ['mes', 'Esse Mês', 'Mês'], ['cal', 'Calendário'], ['plan', 'Planilha de Estudos', 'Planilha'], ['metas', 'Metas e Rotinas', 'Metas'], ['rotina', 'Rotina Semanal', 'Rotina'], ['desemp', 'Desempenho'], ['conta', 'Conta'], ['config', 'Configurações', 'Config.']];
 const now0 = new Date();
 const ui = {
   view: 'hoje', routineOpen: false, day: null, dayFrom: 'cal', weekOff: 0, monOff: 0, calY: now0.getFullYear(), calM: now0.getMonth(),
-  planF: 'all', r1: [addDays(today(), -6), today()], r2: [addDays(today(), -13), addDays(today(), -7)],
+  planF: 'all', rgCol: {}, rgSel: {}, r1: [addDays(today(), -6), today()], r2: [addDays(today(), -13), addDays(today(), -7)],
 };
 let curDay = today();
 
@@ -984,8 +1115,11 @@ function toast(msg) {
 }
 
 // cronômetro
-const elapsed = () => S.timer.acc + (S.timer.running ? Date.now() - S.timer.startTs : 0);
-function timerStart() { if (S.timer.running) return; S.timer.running = true; S.timer.startTs = Date.now(); save(); tick(); }
+// Hora de referência do cronômetro: a do servidor (quando há nuvem), igual para todos os aparelhos, mesmo que o relógio de um deles esteja errado.
+let SK = 0, skSet = false;
+const tnow = () => Date.now() + SK;
+const elapsed = () => S.timer.acc + (S.timer.running ? Math.max(0, tnow() - S.timer.startTs) : 0);
+function timerStart() { if (S.timer.running) return; S.timer.running = true; S.timer.startTs = tnow(); save(); tick(); }
 // O tempo do cronômetro é repartido pelos dias: o que passou da meia-noite conta para o dia seguinte.
 function timerSegs(t0, t1, into) {
   while (t0 < t1) {
@@ -998,14 +1132,14 @@ function timerDays() { // { 'AAAA-MM-DD': ms } com o que já foi pausado + o tre
   const T = S.timer, out = { ...(T.days || {}) };
   const sum = Object.values(out).reduce((a, b) => a + b, 0), legacy = Math.max(0, (T.acc || 0) - sum);
   if (legacy > 0) out[today()] = (out[today()] || 0) + legacy; // cronômetros antigos, sem repartição: contam para hoje
-  if (T.running) timerSegs(T.startTs, Date.now(), out);
+  if (T.running) timerSegs(T.startTs, Math.max(T.startTs, tnow()), out);
   return out;
 }
 function timerPause() {
   if (!S.timer.running) return;
   const T = S.timer, days = { ...(T.days || {}) }, sum = Object.values(days).reduce((a, b) => a + b, 0), legacy = Math.max(0, (T.acc || 0) - sum);
   if (legacy > 0) days[today()] = (days[today()] || 0) + legacy;
-  timerSegs(T.startTs, Date.now(), days);
+  timerSegs(T.startTs, Math.max(T.startTs, tnow()), days);
   T.days = days; T.acc = Object.values(days).reduce((a, b) => a + b, 0); T.running = false; save(); tick();
 }
 function timerReset() { S.timer = { running: false, startTs: 0, acc: 0, days: {} }; }
@@ -1245,6 +1379,52 @@ function planCell(t, k) { // k 0 = execução, 1..3 = revisões
   const sub = { ok: '', late: `<small>previsto ${dmy(r.exp)}</small>`, over: '<small>atrasada</small>', due: '<small>hoje</small>', wait: '<small>previsto</small>' }[r.st];
   return `<button class="pc ${r.st}" data-act="pcell" data-id="${t.id}" data-k="${k}" title="${lab}: previsto para ${fmtBR(r.exp)}"><span>${fmtBR(r.done || r.exp)}</span>${sub}</button>`;
 }
+const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+const ARW_L = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>', ARW_R = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>';
+function viewRotina() {
+  const td = today(), G = [0, 1, 2, 3, 4, 5, 6].map(wd => { const r = rgPick(wd, td); return [wd, routineGrid(wd, td, r), r]; });
+  const sh = d => { const [y, m, dd] = d.split('-'); return `${dd}/${m}/${y.slice(2)}`; };
+  const any = G.some(([, g]) => g.rows.length);
+  const card = ([wd, g, pk]) => {
+    const L = rgList(wd), act = rgActive(wd, td);
+    const pick = L.length > 1 ? `<div class="rgpick"><select class="rgsel" data-wd="${wd}" aria-label="Escolher qual rotina de ${esc(WD[wd])} ver">${L.map(x => `<option value="${esc(String(x.id))}" ${x === pk ? 'selected' : ''}>${sh(x.startDate)} a ${sh(x.endDate)}${x === act ? ' · ativa' : L.some(y => y !== x && y.startDate === x.startDate && y.endDate === x.endDate) ? ' · substituída' : ''}</option>`).join('')}</select></div>` : '';
+    const per = pk && L.length === 1 ? `${sh(pk.startDate)} a ${sh(pk.endDate)} · ` : '';
+    if (!g.rows.length) return `<section class="card rgcard" data-wd="${wd}"><div class="rghd"><div><h2>${WD[wd]}</h2><p class="small muted">${pk ? 'Esta rotina não está valendo em nenhum dia (outra a substitui).' : 'Sem rotina recorrente para este dia.'}</p></div></div>${pick}</section>`;
+    const tot = g.done + g.miss, sum = tot ? `${g.done} de ${tot} cumpridas · ${pct(g.done / tot * 100)}` : 'Nenhuma atividade marcada ainda';
+    const th = g.cols.map(c => { const d = parse(c.ds); return `<th class="d ${c.ds === td ? 'td' : ''} ${c.custom ? 'cu' : ''}" scope="col" title="${esc(WDs[d.getDay()] + ' ' + fmtBR(c.ds) + (c.custom ? ' — rotina específica deste dia' : ''))}">${pad(d.getDate())}/${MESES[d.getMonth()]}${c.custom ? '<i></i>' : ''}</th>`; }).join('');
+    const tr = g.rows.map(r => `<tr><th class="s1 mono" scope="row">${r.t}</th><th class="s2" title="${esc(r.a)}">${esc(r.a)}</th>${g.cols.map(c => { const v = g.cells[r.key][c.ds], fut = c.ds > td; return `<td class="c ${v === 'na' ? 'na' : v} ${fut ? 'fut' : ''} ${c.ds === td ? 'td' : ''}" title="${esc(r.a + ' — ' + fmtBR(c.ds) + ': ' + (v === 'yes' ? 'cumpriu' : v === 'no' ? 'não cumpriu' : v === 'na' ? 'não havia' : fut ? 'ainda não chegou' : 'sem marcação'))}">${v === 'yes' ? '✓' : v === 'no' ? '✕' : v === 'na' ? '–' : ''}</td>`; }).join('')}</tr>`).join('');
+    return `<section class="card rgcard" data-wd="${wd}"><div class="rghd"><div><h2>${WD[wd]}</h2><p class="small muted">${per}${sum}</p></div>
+      <div class="rgnav"><button type="button" class="iconbtn" data-act="rgprev" data-wd="${wd}" aria-label="Datas anteriores">${ARW_L}</button><button type="button" class="iconbtn" data-act="rgnext" data-wd="${wd}" aria-label="Próximas datas">${ARW_R}</button></div></div>${pick}
+      <div class="rgscroll" data-wd="${wd}" data-n="${g.cols.length}" data-anchor="${Math.max(-1, g.cols.map(c => c.ds <= td).lastIndexOf(true))}"><table class="rgt"><thead><tr><th class="s1" scope="col">Hora</th><th class="s2" scope="col">Atividade</th>${th}</tr></thead><tbody>${tr}</tbody></table></div></section>`;
+  };
+  return `<div class="pagehead"><div><p class="eyebrow">Acompanhamento</p><h1>Rotina semanal</h1></div></div>
+  ${any ? `<div class="legend small muted"><span><i class="sw yes"></i>Cumpriu</span><span><i class="sw no"></i>Não cumpriu</span><span><i class="sw"></i>Sem marcação</span><span><i class="sw cu"></i>Dia com rotina específica</span></div>
+  <div class="stack rgwrap">${G.map(card).join('')}</div>` : '<div class="card empty"><p><b>Nenhuma rotina recorrente ainda.</b></p><p class="small muted">Crie rotinas em Metas e Rotinas. Aqui você acompanha, dia da semana por dia da semana, o que cumpriu ao longo das semanas.</p><button class="btn start" data-act="nav" data-v="metas">Ir para Metas e Rotinas</button></div>'}`;
+}
+// Tabelas deslizantes: horários fixos à esquerda; só as datas se movem (setas, sem barra de rolagem). Cada coluna de data tem a mesma largura, então nunca aparece uma coluna cortada.
+const RG_MIN = 54;
+function rgLayout(el, keep) {
+  const wd = el.dataset.wd, s1 = el.querySelector('th.s1'), s2 = el.querySelector('th.s2'); if (!s1 || !s2) return;
+  const fixed = s1.offsetWidth + s2.offsetWidth, n = Math.max(1, Math.floor((el.clientWidth - fixed) / RG_MIN)), cw = (el.clientWidth - fixed) / n;
+  el.style.setProperty('--cw', cw + 'px'); el.dataset.vis = String(n);
+  const total = +el.dataset.n, maxCol = Math.max(0, total - n);
+  let col = keep && ui.rgCol[wd] != null ? ui.rgCol[wd] : Math.max(0, +el.dataset.anchor + 1 - n);
+  col = Math.min(maxCol, Math.max(0, col)); ui.rgCol[wd] = col;
+  el.scrollLeft = col * cw; rgArrows(el);
+}
+function rgArrows(el) {
+  const sec = el.closest('.rgcard'); if (!sec) return;
+  const max = el.scrollWidth - el.clientWidth, x = el.scrollLeft, p = sec.querySelector('[data-act=rgprev]'), q = sec.querySelector('[data-act=rgnext]');
+  if (p) p.classList.toggle('off', max <= 1 || x <= 1); if (q) q.classList.toggle('off', max <= 1 || x >= max - 1);
+  const cw = parseFloat(el.style.getPropertyValue('--cw')) || RG_MIN; ui.rgCol[el.dataset.wd] = Math.round(x / cw);
+}
+function rgInit(keep = false) { document.querySelectorAll('.rgscroll').forEach(el => { rgLayout(el, keep); if (!el._rg) { el._rg = 1; el.addEventListener('scroll', () => rgArrows(el), { passive: true }); } }); }
+function rgMove(wd, dir) {
+  const el = document.querySelector(`.rgscroll[data-wd="${wd}"]`); if (!el) return;
+  const cw = parseFloat(el.style.getPropertyValue('--cw')) || RG_MIN, step = Math.max(1, Math.ceil((+el.dataset.vis || 1) / 2)) * cw;
+  el.scrollTo({ left: Math.max(0, el.scrollLeft + dir * step), behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+}
+addEventListener('resize', () => { if (ui.view === 'rotina') rgInit(true); });
 function viewPlan() {
   const td = today(), all = sortedTasks();
   const st = t => [0, 1, 2].map(k => revState(t, k, td).st);
@@ -1276,7 +1456,7 @@ function taskModal(t) {
   const discs = [...new Set(S.tasks.map(x => x.disc))];
   const dt = (id, val, lab) => `<div class="field"><label class="label" for="${id}">${lab}</label><input type="date" id="${id}" value="${val}" min="2000-01-01" max="${td}"><span class="small muted" id="${id}h"></span></div>`;
   openModal(`<div><p class="eyebrow">${isNew ? 'Nova tarefa' : 'Editar tarefa'}</p><h2 style="font-size:1.25rem;margin-top:4px">Tarefa ${pad(v.n)}</h2></div>
-  <form id="taskForm" data-id="${t ? t.id : ''}" class="stack" onsubmit="return false">
+  <form id="taskForm" data-id="${t ? t.id : ''}" class="stack">
     <div class="pair"><div class="field"><label class="label" for="tTrail">Trilha</label><input class="tx" type="text" id="tTrail" inputmode="numeric" maxlength="3" autocomplete="off" value="${esc(v.trail)}" placeholder="00"></div>
       <div class="field"><label class="label" for="tAula">Aula</label><input class="tx" type="text" id="tAula" inputmode="numeric" maxlength="3" autocomplete="off" value="${esc(v.aula)}" placeholder="00"></div></div>
     <div class="field"><label class="label" for="tDisc">Disciplina</label><input class="tx" type="text" id="tDisc" list="discs" maxlength="60" autocomplete="off" value="${esc(v.disc)}"><datalist id="discs">${discs.map(d => `<option value="${esc(d)}">`).join('')}</datalist></div>
@@ -1306,7 +1486,7 @@ function cellModal(id, k) {
   const t = S.tasks.find(x => x.id === id); if (!t) return;
   const cur = k === 0 ? t.d0 : t.rv[k - 1], exp = k ? taskExp(t, k - 1) : null;
   openModal(`<div><p class="eyebrow">${esc(t.disc)} · trilha ${esc(t.trail)} · aula ${esc(t.aula)}</p><h2 style="font-size:1.25rem;margin-top:4px">${k === 0 ? 'Data de execução' : 'Revisão de ' + REV[k - 1][1]}</h2></div>
-  <form id="cellForm" data-id="${id}" data-k="${k}" class="stack" onsubmit="return false">
+  <form id="cellForm" data-id="${id}" data-k="${k}" class="stack">
     <div class="field"><label class="label" for="cDate">${k === 0 ? 'Dia em que você estudou' : 'Dia em que você revisou'}</label><input type="date" id="cDate" value="${cur || today()}" min="2000-01-01" max="${today()}"></div>
     ${exp ? `<p class="small muted">Previsto para ${fmtBR(exp)}.</p>` : ''}
     ${k === 0 && t.d0 ? '<p class="small muted">Limpar a data de execução também limpa as revisões.</p>' : ''}
@@ -1360,7 +1540,7 @@ function readRows() {
 function dayRoutineModal(ds, override) {
   const R = dayRoutine(ds), d = parse(ds);
   openModal(`<div><p class="eyebrow">Rotina</p><h2 style="font-size:1.25rem;margin-top:4px">${WD[d.getDay()]}, ${fmtBR(ds)}</h2></div>
-  <form id="dayRForm" data-d="${ds}" class="stack" onsubmit="return false">
+  <form id="dayRForm" data-d="${ds}" class="stack">
     <p class="small muted">${R.tpl ? 'Ao salvar uma mudança de horário ou atividade, você escolhe se vale só para este dia ou também para as próximas ' + WDN[d.getDay()] + 's.' : 'As mudanças valem só para este dia.'}</p>
     ${editorHTML(override || R.items)}
     <div class="foot">${R.custom && R.tpl ? '<button type="button" class="btn ghost" data-act="restoreday" style="margin-right:auto">Voltar à rotina recorrente</button>' : ''}<button type="button" class="btn ghost" data-act="close">Cancelar</button><button type="button" class="btn start" data-act="savedayr">Salvar</button></div>
@@ -1398,7 +1578,7 @@ function scopeModal(ds, tpl) {
 function noteModal(ds, id) {
   const x = dayRoutine(ds).items.find(y => y.id === id); if (!x) return;
   openModal(`<div><p class="eyebrow">${fmtBR(ds)} · ${x.t}</p><h2 style="font-size:1.25rem;margin-top:4px">${esc(x.a)}</h2></div>
-  <form id="noteForm" data-d="${ds}" data-id="${esc(id)}" class="stack" onsubmit="return false">
+  <form id="noteForm" data-d="${ds}" data-id="${esc(id)}" class="stack">
     <div class="field"><label class="label" for="rnote">Observação</label><textarea id="rnote" maxlength="300" placeholder="Por que não deu certo, o que aconteceu…" style="min-height:90px">${esc(x.o)}</textarea></div>
     <div class="foot"><button type="button" class="btn ghost" data-act="close">Cancelar</button><button type="button" class="btn start" data-act="savernote">Salvar</button></div>
   </form>`);
@@ -1409,7 +1589,7 @@ function routineModal(r) {
   const t = today(), isNew = !r;
   const start = r ? r.startDate : t, end = r ? r.endDate : addDays(addYears(t, 1), -1), wd = r ? r.weekday : parse(t).getDay();
   openModal(`<div><p class="eyebrow">${isNew ? 'Nova rotina' : 'Editar rotina'}</p><h2 style="font-size:1.25rem;margin-top:4px">Rotina semanal</h2></div>
-  <form id="routineForm" data-id="${r ? esc(r.id) : ''}" class="stack" onsubmit="return false">
+  <form id="routineForm" data-id="${r ? esc(r.id) : ''}" class="stack">
     <div class="field"><label class="label" for="qWd">Dia da semana</label><select id="qWd">${opts(WD.map((n, i) => [i, n]), wd)}</select></div>
     <div class="pair">
       <div class="field"><label class="label" for="qStart">Data de início</label><input type="date" id="qStart" value="${start}" min="${CAL_MIN}" max="${maxDate()}"></div>
@@ -1497,7 +1677,7 @@ function viewDia() {
   ${routineCard(ds)}`;
 }
 
-const VIEWS = { hoje: viewHoje, semana: viewSemana, mes: viewMes, cal: viewCal, dia: viewDia, plan: viewPlan, metas: viewMetas, desemp: viewDesemp };
+const VIEWS = { hoje: viewHoje, semana: viewSemana, mes: viewMes, cal: viewCal, dia: viewDia, plan: viewPlan, metas: viewMetas, rotina: viewRotina, desemp: viewDesemp };
 function render() {
   const out = !auth.session, g = $('#gate');
   document.querySelector('.shell').hidden = out; g.hidden = !out;
@@ -1508,6 +1688,7 @@ function render() {
   $('#nav').innerHTML = NAV.map(([k, n, sh]) => `<button data-act="nav" data-v="${k}" ${(ui.view === 'dia' ? (ui.dayFrom || 'cal') : ui.view) === k ? 'aria-current="page"' : ''}><svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg><span class="lf">${n}</span><span class="ls">${sh || n}</span>${k === 'conta' && auth.session ? (CLOUD ? `<i class="sdot ${cloud.status}" title="${esc(SYNC_TXT[cloud.status] || 'Conectado')}"></i>` : '<i class="on" title="Conectado"></i>') : ''}</button>`).join('');
   $('#view').innerHTML = `<div class="view">${VIEWS[ui.view]()}</div>`;
   if (ui.view === 'hoje') tick();
+  if (ui.view === 'rotina') rgInit();
 }
 
 // ---------- modais ----------
@@ -1521,12 +1702,16 @@ const remGet = () => { try { return localStorage.getItem(REM_KEY) || ''; } catch
 const remSet = v => { try { if (v) localStorage.setItem(REM_KEY, v); else localStorage.removeItem(REM_KEY); } catch (e) {} };
 const auth = { users: {}, session: curUser, cleaned: false, tab: 'in', sub: null };
 const b64 = u8 => btoa(String.fromCharCode(...u8)), unb64 = t => Uint8Array.from(atob(t), c => c.charCodeAt(0));
-async function hashPass(pass, saltB64) {
+const PBKDF2_NEW = 600000, PBKDF2_OLD = 120000; // contas antigas têm 120 mil; passam para 600 mil sozinhas no próximo login
+async function hashPass(pass, saltB64, it) {
+  it = it || PBKDF2_NEW;
   const salt = saltB64 ? unb64(saltB64) : crypto.getRandomValues(new Uint8Array(16));
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveBits']);
-  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations: 120000, hash: 'SHA-256' }, key, 256);
-  return { salt: b64(salt), hash: b64(new Uint8Array(bits)) };
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations: it, hash: 'SHA-256' }, key, 256);
+  return { salt: b64(salt), hash: b64(new Uint8Array(bits)), it };
 }
+const passOK = async (pass, u) => !!u && (await hashPass(pass, u.salt, u.it || PBKDF2_OLD)).hash === u.hash;
+async function upgradeHash(name, pass) { const u = auth.users[name]; if (u && (u.it || PBKDF2_OLD) < PBKDF2_NEW) { auth.users[name] = keepBio(u, await hashPass(pass)); authSave(); } }
 function authSave() {
   try { localStorage.setItem(AUTH_KEY, JSON.stringify({ users: auth.users, cleaned: auth.cleaned })); } catch (e) {}
   try { if (auth.session) sessionStorage.setItem(SESSION_KEY, auth.session); else sessionStorage.removeItem(SESSION_KEY); } catch (e) {}
@@ -1729,7 +1914,7 @@ async function authRun() {
   }
   if (auth.session) { // já conectado: alterar senha ou excluir conta
     const u = auth.users[auth.session], old = $('#aOld').value;
-    if (!u || (await hashPass(old, u.salt)).hash !== u.hash) { err('Senha atual incorreta.'); return; }
+    if (!(await passOK(old, u))) { err('Senha atual incorreta.'); return; }
     if (auth.sub === 'pass') {
       const n = $('#aNew').value;
       if (n.length < 6) { err('A nova senha precisa ter ao menos 6 caracteres.'); return; }
@@ -1771,13 +1956,14 @@ async function authRun() {
       else {
         const u0 = auth.users[name];
         if (!u0) { err('Sem internet: no primeiro acesso neste aparelho é preciso estar online.'); return; }
-        if ((await hashPass(pass, u0.salt)).hash !== u0.hash) { err('Usuário ou senha incorretos.'); return; }
+        if (!(await passOK(pass, u0))) { err('Usuário ou senha incorretos.'); return; }
+        await upgradeHash(name, pass);
       }
     } else {
       const u = auth.users[name];
       if (!u) { err('Usuário ou senha incorretos.'); return; }
-      const h = await hashPass(pass, u.salt);
-      if (h.hash !== u.hash) { err('Usuário ou senha incorretos.'); return; }
+      if (!(await passOK(pass, u))) { err('Usuário ou senha incorretos.'); return; }
+      await upgradeHash(name, pass);
     }
     { const rc = $('#aRem'); if (rc) remSet(rc.checked ? name : ''); }
     auth.session = name; auth.tab = 'in'; authSave(); closeModal(); switchData(); toast(nomeOf(name) ? 'Olá, ' + firstName(nomeOf(name)) + '!' : 'Você entrou como ' + name + '.');
@@ -1840,7 +2026,7 @@ function dayModal(ds) {
   const i = info(ds), d = parse(ds), fut = ds > today();
   const rr = winningRule(ds), rs = rr ? Math.round(rr.hours * 3600) : 0, showRule = ds >= today() && rr && rs !== i.goal;
   openModal(`<div><p class="eyebrow">Editar dia</p><h2 style="font-size:1.25rem;margin-top:4px">${WD[d.getDay()]}, ${fmtBR(ds)}</h2></div>
-  <form id="dayForm" data-d="${ds}" class="stack" onsubmit="return false">
+  <form id="dayForm" data-d="${ds}" class="stack">
     <div class="pair"><div class="field"><span class="label">Meta do dia</span>${hmIn('g', i.goal)}</div>
     <div class="field"><span class="label">Horas estudadas</span>${hmIn('s', fut ? 0 : i.secs, fut)}</div></div>
     ${showRule ? `<p class="small muted"><button type="button" class="link" data-act="fillrule" data-s="${rs}">Usar a meta recorrente (${hm(rs)})</button></p>` : ''}
@@ -1882,7 +2068,7 @@ function ruleModal(g) {
   const cd = g && g.customDays && g.customDays.length ? g.customDays : [1, 2, 3, 4, 5];
   const types = type === 'NONE' ? [['NONE', 'Somente um dia'], ...RTYPES] : RTYPES;
   openModal(`<div><p class="eyebrow">${isNew ? 'Nova meta' : 'Editar meta'}</p><h2 style="font-size:1.25rem;margin-top:4px">Meta recorrente</h2></div>
-  <form id="ruleForm" data-id="${g ? esc(String(g.id)) : ''}" class="stack" onsubmit="return false">
+  <form id="ruleForm" data-id="${g ? esc(String(g.id)) : ''}" class="stack">
     <div class="field"><span class="label">Meta por dia</span>${hmIn('rg', sec)}<span class="small muted">Use 0h para marcar um dia de folga.</span></div>
     <div class="field"><label class="label" for="rType">Repetir</label><select id="rType">${opts(types, type)}</select><span class="small tone-acc" id="rDesc"></span></div>
     <div class="field" id="fWd"><label class="label" for="rWd">Dia da semana</label><select id="rWd">${opts(WDN.map((n, i) => [i, n.charAt(0).toUpperCase() + n.slice(1)]), wd)}</select></div>
@@ -2007,6 +2193,7 @@ document.addEventListener('pointercancel', e => { if (drag && e.pointerId === dr
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && drag && drag.on) dragEnd(false); });
 
 // ---------- eventos ----------
+document.addEventListener('submit', e => e.preventDefault()); // nenhum formulário envia nada: os botões fazem o trabalho
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-act]'); if (!b) return;
   const a = b.dataset.act;
@@ -2112,6 +2299,8 @@ document.addEventListener('click', e => {
     case 'data': dataModal(); break;
     case 'home': if (auth.session) { closeMenu(); closeModal(); ui.view = 'hoje'; go(); const m = $('#view'); if (m && m.parentElement) m.scrollTop = 0; } else { auth.tab = 'in'; accountModal(); } break;
     case 'close': closeModal(); break;
+    case 'rgprev': rgMove(b.dataset.wd, -1); break;
+    case 'rgnext': rgMove(b.dataset.wd, 1); break;
     case 'wprev': ui.weekOff = clamp(ui.weekOff - 1, weekLim()); go(); break;
     case 'wnext': ui.weekOff = clamp(ui.weekOff + 1, weekLim()); go(); break;
     case 'wnow': ui.weekOff = 0; go(); break;
@@ -2178,6 +2367,7 @@ document.addEventListener('input', e => {
 });
 document.addEventListener('change', e => {
   const id = e.target.id;
+  if (e.target.classList && e.target.classList.contains('rgsel') && ui.view === 'rotina') { const wd = +e.target.dataset.wd; ui.rgSel[wd] = e.target.value; delete ui.rgCol[wd]; render(); return; }
   if (['dgh', 'dgm', 'dsh', 'dsm'].includes(id) && ui.view === 'dia') {
     const ds = ui.day, g = Math.min(86400, readHM('dg')), sc = Math.min(86400, readHM('ds'));
     $('#dgh').value = Math.floor(g / 3600); $('#dgm').value = Math.floor(g % 3600 / 60);
@@ -2219,11 +2409,21 @@ document.addEventListener('keydown', e => {
 const CLOUD = (typeof window !== 'undefined' && window.TT_CLOUD && window.TT_CLOUD.url && window.TT_CLOUD.key) ? window.TT_CLOUD : null;
 const SYNC_KEY = 'timetracker_sync_v1_u_';
 const cloud = { on: false, status: 'off', meta: null, tok: null, uid: null, timer: null, poll: null, busy: false, again: false, last: 0 };
+function cloudSkew(r, t0, t1) { // diferença entre o relógio deste aparelho e o do servidor (cabeçalho Date da resposta)
+  try {
+    const d = Date.parse(r.headers.get('date') || ''); if (!isFinite(d) || t1 - t0 > 4000) return;
+    const sk = Math.round(d + 500 - (t0 + t1) / 2); // +500: o cabeçalho vem sem os milissegundos
+    if (skSet && Math.abs(sk - SK) <= 2500) return;
+    if (S && S.timer && S.timer.running) S.timer.startTs += sk - SK; // o cronômetro em andamento não pula
+    SK = sk; skSet = true; if (cloud.meta) { cloud.meta.skew = SK; metaSave(); }
+  } catch (e) {}
+}
 const cloudFetch = async (path, opt = {}, token) => {
   const h = { apikey: CLOUD.key, 'Content-Type': 'application/json', ...(opt.headers || {}) };
   if (token) h.Authorization = 'Bearer ' + token; // sem token de usuário, só a chave (vale para chaves antigas "eyJ..." e novas "sb_publishable_...")
   const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 15000);
-  try { return await fetch(CLOUD.url.replace(/\/(rest|auth)\/v1.*$/, '').replace(/\/+$/, '') + path, { ...opt, headers: h, signal: ctl.signal }); } finally { clearTimeout(t); }
+  const t0 = Date.now();
+  try { const r = await fetch(CLOUD.url.replace(/\/(rest|auth)\/v1.*$/, '').replace(/\/+$/, '') + path, { ...opt, headers: h, signal: ctl.signal }); cloudSkew(r, t0, Date.now()); return r; } finally { clearTimeout(t); }
 };
 const metaLoad = u => { try { const m = JSON.parse(localStorage.getItem(SYNC_KEY + u) || 'null'); if (m) return m; } catch (e) {} return { stamp: {}, dead: {}, snap: {}, dirty: {}, since: 0, refresh: null, uid: null, fresh: true }; };
 const metaSave = () => { try { if (cloud.meta && curUser) localStorage.setItem(SYNC_KEY + curUser, JSON.stringify(cloud.meta)); } catch (e) {} };
@@ -2239,8 +2439,15 @@ const strip = v => { const o = { ...v }; delete o._i; return JSON.stringify(o); 
 const recStr = (k, v) => k.startsWith('goals/') || k.startsWith('tasks/') || k.startsWith('routines/') ? strip(v) : JSON.stringify(v);
 // compara o estado atual com a última foto e marca como "pendente de envio" o que mudou (inclusive exclusões)
 function cloudDiff() {
-  const m = cloud.meta, recs = cloudRecs(), now = Date.now(); let ch = false;
+  const m = cloud.meta, recs = cloudRecs(), now = Math.max(Date.now(), (m.hi || 0) + 1); let ch = false; // o relógio nunca fica atrás do que já foi visto na nuvem (aparelhos com hora diferente)
+  { // versão do cronômetro: cada alteração local soma 1; a versão maior vence, não o relógio do aparelho
+    const T = S.timer, sig = JSON.stringify([T.running, T.startTs, T.acc, T.days]);
+    if (m.tsig === undefined) m.tsig = sig;
+    else if (m.tsig !== sig) { m.tsig = sig; if (!cloud.weak) { T.ver = (m.tver || 0) + 1; m.tver = T.ver; } }
+    else if (T.ver === undefined && m.tver) T.ver = m.tver;
+  }
   for (const k of Object.keys(recs)) {
+    if (k === 'meta/timer' && !m.tver && !(k in m.stamp) && !S.timer.running && !S.timer.acc && !Object.keys(S.timer.days || {}).length) continue; // cronômetro zerado e nunca usado: não envia (não apaga o de outro aparelho)
     const s = recStr(k, recs[k]);
     if (m.snap[k] !== s) {
       if (cloud.weak) { // mudança automática (fechamento de dia): registro novo entra com prioridade mínima; o que já existe não é reenviado
@@ -2287,21 +2494,33 @@ function cloudApply(rows) { // aplica o que veio da nuvem (a mais recente de cad
   const m = cloud.meta, touched = new Set(); let any = false;
   const idx = { goals: new Map(), tasks: new Map(), routines: new Map() };
   for (const r of rows) {
+    if (!isRec(r) || typeof r.k !== 'string' || !okNum(r.ts, 0, 1e16)) continue;
     const k = r.k, ls = m.dead[k] || m.stamp[k] || 0;
-    if (r.ts <= ls) continue; // o local é mais novo (ou igual): mantém
+    if (r.ts > (m.hi || 0) && r.ts < Date.now() + 6048e5) m.hi = r.ts;
+    if (k === 'meta/timer') { const rv = isRec(r.v) && Number.isInteger(r.v.ver) && r.v.ver >= 0 ? r.v.ver : 0, lv = m.tver || 0; if (!(rv > lv || (rv === lv && r.ts > ls))) continue; } // cronômetro: vence a maior versão
+    else if (r.ts <= ls) continue; // o local é mais novo (ou igual): mantém
+    const cut = k.indexOf('/'), top = cut > 0 ? k.slice(0, cut) : '', id = k.slice(cut + 1);
+    // só chaves e conteúdos no formato esperado entram; o resto é ignorado (a nuvem nunca é confiável cegamente)
+    if (!((top === 'meta' && id === 'timer') || ((top === 'sessions' || top === 'rdays') && okDate(id)) || (SAN[top] && !['sessions', 'rdays'].includes(top) && ID_RE.test(id)))) continue;
+    let val = null, pos = null;
+    if (!r.dead) {
+      if (top === 'meta') val = sanTimer(r.v);
+      else if (top === 'sessions' || top === 'rdays') val = SAN[top](r.v);
+      else if (isRec(r.v)) { const raw = { ...r.v }; pos = raw._i; delete raw._i; val = SAN[top](raw); if (val && val.id !== id) val = null; }
+      if (!val) continue;
+    }
     any = true;
-    const [top, ...rest] = k.split('/'), id = rest.join('/');
     if (top === 'sessions' || top === 'rdays') {
-      if (r.dead) delete S[top][id]; else S[top][id] = r.v;
+      if (r.dead) delete S[top][id]; else S[top][id] = val;
     } else if (top === 'meta') {
-      if (id === 'timer' && r.v && !r.dead) S.timer = r.v;
-    } else if (S[top]) {
+      if (!r.dead) { S.timer = val; m.tver = val.ver || 0; m.tsig = JSON.stringify([val.running, val.startTs, val.acc, val.days]); }
+    } else {
       const a = S[top], i = a.findIndex(x => String(x.id) === id);
       if (r.dead) { if (i >= 0) a.splice(i, 1); }
-      else { const o = { ...r.v }; if (o._i != null) idx[top].set(id, o._i); delete o._i; if (i >= 0) a[i] = o; else a.push(o); touched.add(top); }
+      else { if (Number.isInteger(pos)) idx[top].set(id, pos); if (i >= 0) a[i] = val; else a.push(val); touched.add(top); }
     }
     if (r.dead) { m.dead[k] = r.ts; delete m.stamp[k]; delete m.snap[k]; }
-    else { m.stamp[k] = r.ts; delete m.dead[k]; m.snap[k] = recStr(k, top === 'meta' ? r.v : r.v); }
+    else { m.stamp[k] = r.ts; delete m.dead[k]; m.snap[k] = recStr(k, val); }
     delete m.dirty[k];
   }
   for (const top of touched) {
@@ -2365,6 +2584,7 @@ function cloudStart() {
   cloudStop();
   if (!CLOUD || !curUser) return;
   cloud.on = true; cloud.meta = metaLoad(curUser); cloud.uid = cloud.meta.uid || null;
+  if (!skSet && Number.isFinite(cloud.meta.skew)) SK = cloud.meta.skew;
   if (cloud.pending) { cloudTok(cloud.pending); cloud.pending = null; }
   if (cloud.meta.fresh && !Object.keys(cloud.meta.snap).length) { /* primeiro uso neste aparelho: o que já existe localmente é enviado */ }
   cloudDiff(); metaSave();
@@ -2377,6 +2597,8 @@ if (typeof window !== 'undefined') {
   addEventListener('online', () => { if (cloud.on) cloudSync(); });
   addEventListener('offline', () => { if (cloud.on) cloudSetStatus('offline'); });
   document.addEventListener('visibilitychange', () => { if (cloud.on && document.visibilityState === 'visible') cloudSync(); });
+  addEventListener('focus', () => { if (cloud.on) cloudSync(); });
+  addEventListener('pageshow', () => { if (cloud.on) cloudSync(); });
 }
 // ---- conta na nuvem ----
 const cloudErr = async r => { let j = {}; try { j = await r.json(); } catch (e) {} return (j.msg || j.error_description || j.message || j.error || '').toString(); };
