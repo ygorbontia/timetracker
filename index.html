@@ -1,4 +1,4 @@
-<!doctype html><html lang="pt-BR"><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-UXeeAUO8sqMXPcdYTzklqYuFpzKJgyBr128Bo8tCsZ8=' 'sha256-fEqu4i9Z/F8jcfJQAv3FAo2ciCtueMqM7fPqiLnvp8A='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://*.supabase.co; frame-src 'none'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><style>html{color-scheme:dark}body{margin:0;touch-action:manipulation}[hidden]{display:none!important}</style>
+<!doctype html><html lang="pt-BR"><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-UXeeAUO8sqMXPcdYTzklqYuFpzKJgyBr128Bo8tCsZ8=' 'sha256-DuDNYOUi1bZjb0D1f9q8I6aAMGUmN+YiJus8yB5CxzU='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://*.supabase.co; frame-src 'none'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><style>html{color-scheme:dark}body{margin:0;touch-action:manipulation}[hidden]{display:none!important}</style>
 <title>TimeTracker & Study Planner</title>
 
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -160,7 +160,18 @@ input[readonly] { opacity: .72; cursor: not-allowed; }
 .rghd { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .rghd h2 { font-size: 1.05rem; }
 .rgpick { margin: -2px 0 0; }
-.rgsel { width: auto; max-width: 100%; font-size: .84rem; padding: 6px 28px 6px 10px; }
+.rgtog { flex: 1; min-width: 0; cursor: pointer; border-radius: 10px; }
+.rgtog:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+.rgtog:hover .cv { stroke: var(--accent-fg); }
+.rgcard.open .rtit .cv { transform: none; }
+.rgchips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; margin: 0 -2px; padding: 2px; }
+.rgchips::-webkit-scrollbar { display: none; }
+.rgchip { flex: none; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--surface-2); color: var(--muted); border-radius: 999px; padding: 5px 12px; font: 600 .78rem/1.2 'JetBrains Mono', monospace; cursor: pointer; white-space: nowrap; transition: background .15s, color .15s, border-color .15s; }
+.rgchip:hover { color: var(--text); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.rgchip.on { background: color-mix(in srgb, var(--accent) 18%, var(--surface)); border-color: var(--accent); color: var(--accent-fg); }
+.rgchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.rgchip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); flex: none; }
+.rgchip em { font-style: normal; font-weight: 500; opacity: .7; font-size: .7rem; }
 .rgnav { display: flex; gap: 6px; flex: none; }
 .rgnav .iconbtn.off { visibility: hidden; }
 .rgscroll { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; -ms-overflow-style: none; overscroll-behavior-x: contain; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
@@ -1095,7 +1106,7 @@ const NAV = [['hoje', 'Hoje'], ['semana', 'Essa Semana', 'Semana'], ['mes', 'Ess
 const now0 = new Date();
 const ui = {
   view: 'hoje', routineOpen: false, day: null, dayFrom: 'cal', weekOff: 0, monOff: 0, calY: now0.getFullYear(), calM: now0.getMonth(),
-  planF: 'all', rgCol: {}, rgSel: {}, r1: [addDays(today(), -6), today()], r2: [addDays(today(), -13), addDays(today(), -7)],
+  planF: 'all', rgCol: {}, rgSel: {}, rgOpen: {}, r1: [addDays(today(), -6), today()], r2: [addDays(today(), -13), addDays(today(), -7)],
 };
 let curDay = today();
 
@@ -1387,14 +1398,17 @@ function viewRotina() {
   const any = G.some(([, g]) => g.rows.length);
   const card = ([wd, g, pk]) => {
     const L = rgList(wd), act = rgActive(wd, td);
-    const pick = L.length > 1 ? `<div class="rgpick"><select class="rgsel" data-wd="${wd}" aria-label="Escolher qual rotina de ${esc(WD[wd])} ver">${L.map(x => `<option value="${esc(String(x.id))}" ${x === pk ? 'selected' : ''}>${sh(x.startDate)} a ${sh(x.endDate)}${x === act ? ' · ativa' : L.some(y => y !== x && y.startDate === x.startDate && y.endDate === x.endDate) ? ' · substituída' : ''}</option>`).join('')}</select></div>` : '';
-    const per = pk && L.length === 1 ? `${sh(pk.startDate)} a ${sh(pk.endDate)} · ` : '';
+    const yr = String(td).slice(0, 4), sp = d => { const [y, m, dd] = d.split('-'); return `${dd}/${m}${y === yr ? '' : '/' + y.slice(2)}`; };
+    const pick = L.length > 1 ? `<div class="rgchips" role="group" aria-label="Escolher qual rotina de ${esc(WD[wd])} ver">${L.map(x => { const on = x === pk, sub = L.some(y => y !== x && y.startDate === x.startDate && y.endDate === x.endDate); return `<button type="button" class="rgchip ${on ? 'on' : ''}" data-act="rgsel" data-wd="${wd}" data-id="${esc(String(x.id))}" aria-pressed="${on}" title="${fmtBR(x.startDate)} a ${fmtBR(x.endDate)}${x === act ? ' (ativa hoje)' : sub ? ' (substituída por outra de mesmo período)' : ''}">${x === act ? '<i class="dot"></i>' : ''}${sp(x.startDate)} – ${sp(x.endDate)}${x !== act && sub ? ' <em>substituída</em>' : ''}</button>`; }).join('')}</div>` : '';
+    const open = !!ui.rgOpen[wd], per = `${g.rows.length} ${g.rows.length === 1 ? 'atividade' : 'atividades'} · ` + (pk && L.length === 1 ? `${sh(pk.startDate)} a ${sh(pk.endDate)} · ` : '');
     if (!g.rows.length) return `<section class="card rgcard" data-wd="${wd}"><div class="rghd"><div><h2>${WD[wd]}</h2><p class="small muted">${pk ? 'Esta rotina não está valendo em nenhum dia (outra a substitui).' : 'Sem rotina recorrente para este dia.'}</p></div></div>${pick}</section>`;
     const tot = g.done + g.miss, sum = tot ? `${g.done} de ${tot} cumpridas · ${pct(g.done / tot * 100)}` : 'Nenhuma atividade marcada ainda';
     const th = g.cols.map(c => { const d = parse(c.ds); return `<th class="d ${c.ds === td ? 'td' : ''} ${c.custom ? 'cu' : ''}" scope="col" title="${esc(WDs[d.getDay()] + ' ' + fmtBR(c.ds) + (c.custom ? ' — rotina específica deste dia' : ''))}">${pad(d.getDate())}/${MESES[d.getMonth()]}${c.custom ? '<i></i>' : ''}</th>`; }).join('');
     const tr = g.rows.map(r => `<tr><th class="s1 mono" scope="row">${r.t}</th><th class="s2" title="${esc(r.a)}">${esc(r.a)}</th>${g.cols.map(c => { const v = g.cells[r.key][c.ds], fut = c.ds > td; return `<td class="c ${v === 'na' ? 'na' : v} ${fut ? 'fut' : ''} ${c.ds === td ? 'td' : ''}" title="${esc(r.a + ' — ' + fmtBR(c.ds) + ': ' + (v === 'yes' ? 'cumpriu' : v === 'no' ? 'não cumpriu' : v === 'na' ? 'não havia' : fut ? 'ainda não chegou' : 'sem marcação'))}">${v === 'yes' ? '✓' : v === 'no' ? '✕' : v === 'na' ? '–' : ''}</td>`; }).join('')}</tr>`).join('');
-    return `<section class="card rgcard" data-wd="${wd}"><div class="rghd"><div><h2>${WD[wd]}</h2><p class="small muted">${per}${sum}</p></div>
-      <div class="rgnav"><button type="button" class="iconbtn" data-act="rgprev" data-wd="${wd}" aria-label="Datas anteriores">${ARW_L}</button><button type="button" class="iconbtn" data-act="rgnext" data-wd="${wd}" aria-label="Próximas datas">${ARW_R}</button></div></div>${pick}
+    const head = `<div class="rghd"><div class="rgtog" role="button" tabindex="0" data-act="rgtoggle" data-wd="${wd}" aria-expanded="${open}" title="${open ? 'Recolher' : 'Expandir'} ${esc(WD[wd])}"><div class="rtit">${CHEVD}<div><h2>${WD[wd]}</h2><p class="small muted">${per}${sum}</p></div></div></div>
+      ${open ? `<div class="rgnav"><button type="button" class="iconbtn" data-act="rgprev" data-wd="${wd}" aria-label="Datas anteriores">${ARW_L}</button><button type="button" class="iconbtn" data-act="rgnext" data-wd="${wd}" aria-label="Próximas datas">${ARW_R}</button></div>` : ''}</div>`;
+    if (!open) return `<section class="card rgcard" data-wd="${wd}">${head}</section>`;
+    return `<section class="card rgcard open" data-wd="${wd}">${head}${pick}
       <div class="rgscroll" data-wd="${wd}" data-n="${g.cols.length}" data-anchor="${Math.max(-1, g.cols.map(c => c.ds <= td).lastIndexOf(true))}"><table class="rgt"><thead><tr><th class="s1" scope="col">Hora</th><th class="s2" scope="col">Atividade</th>${th}</tr></thead><tbody>${tr}</tbody></table></div></section>`;
   };
   return `<div class="pagehead"><div><p class="eyebrow">Acompanhamento</p><h1>Rotina semanal</h1></div></div>
@@ -1418,7 +1432,7 @@ function rgArrows(el) {
   if (p) p.classList.toggle('off', max <= 1 || x <= 1); if (q) q.classList.toggle('off', max <= 1 || x >= max - 1);
   const cw = parseFloat(el.style.getPropertyValue('--cw')) || RG_MIN; ui.rgCol[el.dataset.wd] = Math.round(x / cw);
 }
-function rgInit(keep = false) { document.querySelectorAll('.rgscroll').forEach(el => { rgLayout(el, keep); if (!el._rg) { el._rg = 1; el.addEventListener('scroll', () => rgArrows(el), { passive: true }); } }); }
+function rgInit(keep = false) { document.querySelectorAll('.rgchips').forEach(c => { const o = c.querySelector('.on'); if (o) c.scrollLeft = o.offsetLeft - (c.clientWidth - o.offsetWidth) / 2; }); document.querySelectorAll('.rgscroll').forEach(el => { rgLayout(el, keep); if (!el._rg) { el._rg = 1; el.addEventListener('scroll', () => rgArrows(el), { passive: true }); } }); }
 function rgMove(wd, dir) {
   const el = document.querySelector(`.rgscroll[data-wd="${wd}"]`); if (!el) return;
   const cw = parseFloat(el.style.getPropertyValue('--cw')) || RG_MIN, step = Math.max(1, Math.ceil((+el.dataset.vis || 1) / 2)) * cw;
@@ -2299,6 +2313,8 @@ document.addEventListener('click', e => {
     case 'data': dataModal(); break;
     case 'home': if (auth.session) { closeMenu(); closeModal(); ui.view = 'hoje'; go(); const m = $('#view'); if (m && m.parentElement) m.scrollTop = 0; } else { auth.tab = 'in'; accountModal(); } break;
     case 'close': closeModal(); break;
+    case 'rgtoggle': { const wd = +b.dataset.wd, sc = $('#view').parentElement, y = sc.scrollTop; ui.rgOpen[wd] = !ui.rgOpen[wd]; render(); sc.scrollTop = y; const h = document.querySelector(`.rgtog[data-wd="${wd}"]`); if (h) h.focus({ preventScroll: true }); break; }
+    case 'rgsel': { const wd = +b.dataset.wd, sc = $('#view').parentElement, y = sc.scrollTop; ui.rgSel[wd] = b.dataset.id; delete ui.rgCol[wd]; render(); sc.scrollTop = y; break; }
     case 'rgprev': rgMove(b.dataset.wd, -1); break;
     case 'rgnext': rgMove(b.dataset.wd, 1); break;
     case 'wprev': ui.weekOff = clamp(ui.weekOff - 1, weekLim()); go(); break;
@@ -2367,7 +2383,6 @@ document.addEventListener('input', e => {
 });
 document.addEventListener('change', e => {
   const id = e.target.id;
-  if (e.target.classList && e.target.classList.contains('rgsel') && ui.view === 'rotina') { const wd = +e.target.dataset.wd; ui.rgSel[wd] = e.target.value; delete ui.rgCol[wd]; render(); return; }
   if (['dgh', 'dgm', 'dsh', 'dsm'].includes(id) && ui.view === 'dia') {
     const ds = ui.day, g = Math.min(86400, readHM('dg')), sc = Math.min(86400, readHM('ds'));
     $('#dgh').value = Math.floor(g / 3600); $('#dgm').value = Math.floor(g % 3600 / 60);
