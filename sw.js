@@ -1,7 +1,7 @@
 // Guarda o aplicativo no aparelho para abrir sem internet. Com internet, sempre busca a versão mais nova.
 // Também mostra a notificação do cronômetro (quando ele está rodando e o app sai da tela) e trata os botões dela.
-const V = 'tt-v3';
-const FILES = ['./', 'index.html', 'config.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png',
+const V = 'tt-v4';
+const FILES = ['./', 'index.html', 'config.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'notif-icon.png', 'notif-badge.png', 'act-pause.png', 'act-play.png', 'act-reset.png',
   'fonts/JetBrainsMono-Regular.woff2', 'fonts/JetBrainsMono-Medium.woff2', 'fonts/JetBrainsMono-Bold.woff2', 'fonts/PlusJakartaSans.ttf'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(V).then(c => Promise.all(FILES.map(f => c.add(f).catch(() => {})))).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== V).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
@@ -43,13 +43,14 @@ function tnState(r) { // estado depois de aplicar a fila de ações sobre a últ
 async function tnClose() { for (const n of await self.registration.getNotifications({ tag: 'tt-timer' })) n.close(); }
 async function tnShow(r) {
   if (!r || !r.u) return tnClose();
-  const s = tnState(r), base = { tag: 'tt-timer', renotify: false, silent: true, requireInteraction: true, icon: 'icon-192.png', badge: 'icon-192.png', data: { tt: 1 } };
+  const s = tnState(r), base = { tag: 'tt-timer', renotify: false, silent: true, requireInteraction: true, icon: 'notif-icon.png', badge: 'notif-badge.png', data: { tt: 1 } };
+  const A = { pause: { action: 'pause', title: '\u275A\u275A', icon: 'act-pause.png' }, play: { action: 'play', title: '\u25B6\uFE0E', icon: 'act-play.png' }, reset: { action: 'reset', title: '\u21BA', icon: 'act-reset.png' } }; // só símbolos, sem texto
   if (s.reset) return tnClose();
   if (s.run) {
     const since = s.st - (r.sk || 0), ms = s.raw + s.acc + Math.max(0, Date.now() + (r.sk || 0) - s.st);
-    return self.registration.showNotification(clockTxt(ms), { ...base, body: 'Rodando desde ' + hhmm(since) + ' · toque para abrir', timestamp: since, actions: [{ action: 'pause', title: '⏸' }] });
+    return self.registration.showNotification(clockTxt(ms), { ...base, body: 'Cronômetro rodando · desde ' + hhmm(since), timestamp: since, actions: [A.pause] });
   }
-  return self.registration.showNotification(clockTxt(s.raw + s.acc), { ...base, body: 'Pausado · toque para abrir', actions: [{ action: 'play', title: '▶' }, { action: 'reset', title: '↺' }] });
+  return self.registration.showNotification(clockTxt(s.raw + s.acc), { ...base, body: 'Cronômetro pausado', actions: [A.play, A.reset] });
 }
 async function openApp() {
   const l = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
