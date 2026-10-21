@@ -1,4 +1,4 @@
-<!doctype html><html lang="pt-BR"><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-UXeeAUO8sqMXPcdYTzklqYuFpzKJgyBr128Bo8tCsZ8=' 'sha256-DuDNYOUi1bZjb0D1f9q8I6aAMGUmN+YiJus8yB5CxzU='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://*.supabase.co; frame-src 'none'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><style>html{color-scheme:dark}body{margin:0;touch-action:manipulation}[hidden]{display:none!important}</style>
+<!doctype html><html lang="pt-BR"><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-UXeeAUO8sqMXPcdYTzklqYuFpzKJgyBr128Bo8tCsZ8=' 'sha256-0EttTqeEPVvlZbPEc/86LDO7XALNvhSkMxe7+Mj5hVo='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://*.supabase.co; frame-src 'none'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><style>html{color-scheme:dark}body{margin:0;touch-action:manipulation}[hidden]{display:none!important}</style>
 <title>TimeTracker & Study Planner</title>
 
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -539,7 +539,7 @@ function load() {
   return blank();
 }
 let S = load();
-function save() { if (!curUser) return; try { localStorage.setItem(dataKey(), JSON.stringify(S)); } catch (e) { storageOK = false; } if (typeof cloudTouch === 'function') cloudTouch(); }
+function save() { if (!curUser) return; try { localStorage.setItem(dataKey(), JSON.stringify(S)); } catch (e) { storageOK = false; } if (typeof cloudTouch === 'function') cloudTouch(); if (typeof tnMirror === 'function') tnMirror(); }
 
 // ---- metas recorrentes ----
 const dim = (y, m) => new Date(y, m + 1, 0).getDate();
@@ -1130,7 +1130,7 @@ function toast(msg) {
 let SK = 0, skSet = false;
 const tnow = () => Date.now() + SK;
 const elapsed = () => S.timer.acc + (S.timer.running ? Math.max(0, tnow() - S.timer.startTs) : 0);
-function timerStart() { if (S.timer.running) return; S.timer.running = true; S.timer.startTs = tnow(); save(); tick(); }
+function timerStart(at) { if (S.timer.running) return; S.timer.running = true; S.timer.startTs = at || tnow(); save(); tick(); if (!at) tnAsk(); }
 // O tempo do cronômetro é repartido pelos dias: o que passou da meia-noite conta para o dia seguinte.
 function timerSegs(t0, t1, into) {
   while (t0 < t1) {
@@ -1146,11 +1146,11 @@ function timerDays() { // { 'AAAA-MM-DD': ms } com o que já foi pausado + o tre
   if (T.running) timerSegs(T.startTs, Math.max(T.startTs, tnow()), out);
   return out;
 }
-function timerPause() {
+function timerPause(at) {
   if (!S.timer.running) return;
   const T = S.timer, days = { ...(T.days || {}) }, sum = Object.values(days).reduce((a, b) => a + b, 0), legacy = Math.max(0, (T.acc || 0) - sum);
   if (legacy > 0) days[today()] = (days[today()] || 0) + legacy;
-  timerSegs(T.startTs, Math.max(T.startTs, tnow()), days);
+  timerSegs(T.startTs, Math.max(T.startTs, at || tnow()), days);
   T.days = days; T.acc = Object.values(days).reduce((a, b) => a + b, 0); T.running = false; save(); tick();
 }
 function timerReset() { S.timer = { running: false, startTs: 0, acc: 0, days: {} }; }
@@ -1167,6 +1167,7 @@ function timerDone() {
   timerReset(); save();
   toast(multi ? `Sessão salva: ${clock(total * 1000)}, repartidas entre os dias.` : `Sessão salva: ${clock(total * 1000)} adicionadas ao dia.`); render();
 }
+function resetTimerNow(quiet) { const dd = timerDays(), keep = {}; for (const k of Object.keys(dd)) if (k !== today()) keep[k] = dd[k]; timerReset(); S.timer.days = keep; S.timer.acc = Object.values(keep).reduce((a, b) => a + b, 0); { const z = ensure(today()); z.secs = 0; z.status = 'PENDENTE'; } save(); if (!quiet) toast('Cronômetro zerado.'); render(); }
 function tick() {
   const el = $('#clock'); if (!el) return;
   const ms = elapsed(), i = info(today());
@@ -1998,7 +1999,7 @@ async function authRun() {
     const pw = $('#aPass'); if (pw) pw.focus();
   }
 }
-async function authOut() { if (CLOUD && cloud.on) { try { await Promise.race([cloudSync(), new Promise(r => setTimeout(r, 2500))]); } catch (e) {} } cloudStop(); bio.tried = true; /* saiu de propósito: não pede a digital sozinho */ auth.session = null; auth.sub = null; auth.tab = 'in'; authSave(); closeModal(); switchData(); toast('Você saiu da conta.'); }
+async function authOut() { tnClear(); if (CLOUD && cloud.on) { try { await Promise.race([cloudSync(), new Promise(r => setTimeout(r, 2500))]); } catch (e) {} } cloudStop(); bio.tried = true; /* saiu de propósito: não pede a digital sozinho */ auth.session = null; auth.sub = null; auth.tab = 'in'; authSave(); closeModal(); switchData(); toast('Você saiu da conta.'); }
 document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.closest && e.target.closest('#authForm')) { e.preventDefault(); authGo(); } });
 document.addEventListener('keydown', e => { // Enter no nome da atividade = "Adicionar atividade"
   if (e.key === 'Enter' && e.target.classList && e.target.classList.contains('ra') && e.target.closest('#rrows')) { e.preventDefault(); e.target.value = capAct(e.target.value); const nx = e.target.closest('.rrow').nextElementSibling; if (nx && nx.classList.contains('rrow')) { nx.querySelector('.rh').focus(); nx.scrollIntoView({ block: 'nearest' }); } else addRrow(); }
@@ -2252,7 +2253,7 @@ document.addEventListener('click', e => {
         clearTimeout(window._rt); window._rt = setTimeout(() => { b.dataset.armed = ''; b.innerHTML = RESET_HTML; b.style.width = ''; }, 3000);
         break;
       }
-      clearTimeout(window._rt); { const dd = timerDays(), keep = {}; for (const k of Object.keys(dd)) if (k !== today()) keep[k] = dd[k]; timerReset(); S.timer.days = keep; S.timer.acc = Object.values(keep).reduce((a, b) => a + b, 0); } { const z = ensure(today()); z.secs = 0; z.status = 'PENDENTE'; } save(); toast('Cronômetro zerado.'); render(); break;
+      clearTimeout(window._rt); resetTimerNow(); break;
     }
     case 'newrule': ruleModal(null); break;
     case 'newroutine': routineModal(null); break;
@@ -2647,6 +2648,71 @@ async function cloudSignup(email, pass, nome) {
 }
 
 // No programa local, fechar a janela pausa o cronômetro para não contar o tempo em que o programa ficou fechado.
+// ---- cronômetro fora da tela: notificação no celular (via service worker) e miniatura no Windows ----
+// O service worker não enxerga o localStorage; por isso o estado do cronômetro é espelhado no IndexedDB, e o que for feito pela notificação
+// (pausar, continuar, zerar) fica numa fila ("ops") que o app aplica assim que abre ou volta para a tela.
+const TN_OK = () => typeof Notification !== 'undefined' && typeof indexedDB !== 'undefined' && 'serviceWorker' in navigator && /^https?:/.test(location.protocol) && !window.ttStore;
+function tnTx(fn) { // fn(registro) -> { rec: novo registro (opcional), out: resultado }; leitura e escrita na mesma transação
+  return new Promise((res, rej) => {
+    const q = indexedDB.open('tt-notif', 1);
+    q.onupgradeneeded = () => q.result.createObjectStore('kv');
+    q.onerror = () => rej(q.error);
+    q.onsuccess = () => {
+      const db = q.result, tx = db.transaction('kv', 'readwrite'), st = tx.objectStore('kv'), g = st.get('timer'); let out;
+      g.onsuccess = () => { const r = fn(g.result || null) || {}; if (r.rec) st.put(r.rec, 'timer'); out = r.out; };
+      tx.oncomplete = () => { db.close(); res(out); };
+      tx.onerror = tx.onabort = () => { db.close(); rej(tx.error); };
+    };
+  });
+}
+function tnSnap() { const T = S.timer; return { u: curUser, s: { running: !!T.running, startTs: T.startTs, acc: T.acc }, raw: Math.round(info(today()).raw * 1000), sk: SK }; }
+let tnT = 0;
+function tnWrite() { return tnTx(r => ({ rec: { ...tnSnap(), ops: r && r.u === curUser && Array.isArray(r.ops) ? r.ops : [] } })); } // guarda a fila de ops que o service worker tenha acabado de colocar
+function tnMirror() { if (!TN_OK() || !curUser || !auth.session) return; clearTimeout(tnT); tnT = setTimeout(() => { tnWrite().catch(() => {}); }, 250); }
+function tnAsk() { try { if (TN_OK() && Notification.permission === 'default') Notification.requestPermission(); } catch (e) {} }
+let tnBusy = false;
+async function tnAdopt() { // aplica o que foi feito pela notificação
+  if (!TN_OK() || !curUser || !auth.session || tnBusy) return; tnBusy = true;
+  try {
+    const ops = await tnTx(r => (!r || r.u !== curUser || !Array.isArray(r.ops) || !r.ops.length) ? { out: [] } : { rec: { ...r, ops: [] }, out: r.ops });
+    if (!ops.length) return;
+    for (const o of ops) {
+      if (!o || !okNum(o.at, 0, 1e15)) continue;
+      if (o.op === 'pause') timerPause(o.at); else if (o.op === 'play') timerStart(o.at); else if (o.op === 'reset') resetTimerNow(true);
+    }
+    save(); tick(); if (!$('#modal').innerHTML) render(); tnMirror();
+  } catch (e) {} finally { tnBusy = false; }
+}
+async function tnVis() {
+  if (!TN_OK() || !curUser || !auth.session) return;
+  try {
+    const reg = await navigator.serviceWorker.getRegistration(); if (!reg) return;
+    if (document.visibilityState === 'visible') { await tnAdopt(); (await reg.getNotifications({ tag: 'tt-timer' })).forEach(n => n.close()); return; }
+    if (S.timer.running && Notification.permission === 'granted') { await tnWrite(); const w = reg.active || navigator.serviceWorker.controller; if (w) w.postMessage({ tt: 'show' }); }
+  } catch (e) {}
+}
+let tnL = 0;
+function tnLive() { // com o app fora da tela e o cronômetro rodando, pede ao service worker para atualizar o número da notificação
+  if (document.visibilityState !== 'hidden' || !S.timer.running || !TN_OK() || !curUser || !auth.session || Notification.permission !== 'granted') return;
+  const n = Date.now(); if (n - tnL < 1000) return; tnL = n;
+  const w = navigator.serviceWorker.controller; if (w) w.postMessage({ tt: 'show' });
+}
+async function tnClear() { try { await tnTx(() => ({ rec: { u: null, s: { running: false, startTs: 0, acc: 0 }, raw: 0, sk: 0, ops: [] } })); const reg = await navigator.serviceWorker.getRegistration(); if (reg) (await reg.getNotifications({ tag: 'tt-timer' })).forEach(n => n.close()); } catch (e) {} }
+if (typeof window !== 'undefined') {
+  document.addEventListener('visibilitychange', tnVis);
+  addEventListener('pageshow', () => { if (document.visibilityState === 'visible') tnVis(); });
+  addEventListener('focus', () => tnAdopt());
+  if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', e => { if (e.data && e.data.tt === 'ops') tnAdopt(); });
+  setInterval(() => { if (document.visibilityState === 'visible') tnAdopt(); }, 3000);
+}
+// miniatura do programa do Windows: manda o estado do cronômetro para a janelinha
+let miniLast = { run: null, t: 0, v: 0 };
+function miniPush() {
+  if (!(window.ttStore && window.ttStore.mini) || !curUser || !auth.session) return;
+  const run = !!S.timer.running, v = Math.round(info(today()).raw * 1000 + elapsed()), now = Date.now();
+  if (run === miniLast.run && now - miniLast.t < 4000 && (run || Math.abs(v - miniLast.v) < 1000)) return;
+  miniLast = { run, t: now, v }; try { window.ttStore.mini({ run, ms: v }); } catch (e) {}
+}
 if (window.ttStore) addEventListener('pagehide', () => { if (S.timer.running) timerPause(); });
 if ('serviceWorker' in navigator && /^https?:/.test(location.protocol) && window.TT_CLOUD) navigator.serviceWorker.register('sw.js').catch(() => {});
 rollover();
@@ -2654,7 +2720,7 @@ authInit(); bioDetect();
 render();
 setInterval(() => {
   if (today() !== curDay) { curDay = today(); rollover(); render(); return; }
-  tick();
+  tick(); miniPush(); tnLive();
 }, 250);
 </script>
 
