@@ -1,4 +1,4 @@
-<!doctype html><html lang="pt-BR"><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-UXeeAUO8sqMXPcdYTzklqYuFpzKJgyBr128Bo8tCsZ8=' 'sha256-0EttTqeEPVvlZbPEc/86LDO7XALNvhSkMxe7+Mj5hVo='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://*.supabase.co; frame-src 'none'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><style>html{color-scheme:dark}body{margin:0;touch-action:manipulation}[hidden]{display:none!important}</style>
+<!doctype html><html lang="pt-BR"><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-UXeeAUO8sqMXPcdYTzklqYuFpzKJgyBr128Bo8tCsZ8=' 'sha256-xTBft4v/ACqGj6x8W5byKzPjltCSZEu5/fIf4A7IoCA='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://*.supabase.co; frame-src 'none'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><style>html{color-scheme:dark}body{margin:0;touch-action:manipulation}[hidden]{display:none!important}</style>
 <title>TimeTracker & Study Planner</title>
 
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -306,6 +306,8 @@ input[type="number"] { font-family: var(--font-mono); font-variant-numeric: tabu
 .card.rcard[role="button"] { cursor: pointer; }
 .rgrid[data-sort] > .rcard { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .rcard.dragging { opacity: .3; outline: 2px dashed var(--accent); outline-offset: -2px; }
+.plan tbody.drg > tr { cursor: grab; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.plan tbody > tr.dragging td { opacity: .3; }
 .drag-ghost { position: fixed; z-index: 80; pointer-events: none; opacity: .96; margin: 0 !important; transform: rotate(1.2deg); box-shadow: 0 18px 40px -12px var(--sh), 0 0 0 1px var(--accent); }
 body.dragging-cards, body.dragging-cards * { cursor: grabbing !important; }
 .card.rcard[role="button"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -337,6 +339,18 @@ html, body, main, #gate, .sheet, textarea { scrollbar-width: none; -ms-overflow-
   #gate { min-height: 0; height: calc(100vh - 84px); height: calc(100dvh - 84px); overflow-y: auto; }
 }
 
+/* Planilha no computador: só a tabela rola (cabeçalho das colunas fixo); título, cards e filtros ficam parados */
+@media (min-width: 821px) and (min-height: 640px) {
+  main:has(> .planpg) { overflow-y: hidden; padding-bottom: 20px; }
+  .planpg { height: 100%; min-height: 0; gap: 14px; }
+  .planpg > * { flex: none; }
+  .planpg > .tblwrap { flex: 1 1 auto; min-height: 120px; overflow: auto; overscroll-behavior: contain; }
+  .planpg .plan thead th { position: sticky; top: 0; z-index: 2; background: color-mix(in srgb, var(--accent) 10%, var(--surface)); box-shadow: 0 1px 0 var(--line); }
+  .planpg .plan thead th { background-clip: padding-box; }
+  .planpg > .tblwrap { scrollbar-width: auto; scrollbar-color: auto; }
+  .planpg > .tblwrap::-webkit-scrollbar { display: block; width: 0; height: 8px; }
+}
+
 /* TELA DE ENTRADA */
 .shell[hidden], #gate[hidden] { display: none !important; }
 #gate { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; padding: 24px 16px; }
@@ -349,6 +363,7 @@ table.plan { border-collapse: separate; border-spacing: 0; width: 100%; min-widt
 .plan td { padding: 6px 4px; text-align: center; vertical-align: middle; border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
 .plan tbody tr:last-child td { border-bottom: 0 }
 .plan .l { text-align: left; }
+.plan .obsln { display: block; margin-top: 2px; font-size: .78rem; line-height: 1.3; font-weight: 400; color: var(--muted); overflow-wrap: anywhere; }
 .plan .acts { width: 1%; }
 .plan .acts .btn { display: flex; width: 100%; }
 .plan .acts .btn + .btn { margin-top: 4px; }
@@ -539,7 +554,7 @@ function load() {
   return blank();
 }
 let S = load();
-function save() { if (!curUser) return; try { localStorage.setItem(dataKey(), JSON.stringify(S)); } catch (e) { storageOK = false; } if (typeof cloudTouch === 'function') cloudTouch(); if (typeof tnMirror === 'function') tnMirror(); }
+function save() { if (!curUser) return; try { localStorage.setItem(dataKey(), JSON.stringify(S)); } catch (e) { storageOK = false; } if (typeof cloudTouch === 'function') cloudTouch(); if (typeof ntSync === 'function' && document.visibilityState === 'hidden') ntSync(); }
 
 // ---- metas recorrentes ----
 const dim = (y, m) => new Date(y, m + 1, 0).getDate();
@@ -772,7 +787,8 @@ const nextTaskN = () => S.tasks.reduce((m, t) => Math.max(m, t.n || 0), 0) + 1;
 function validateTask(f, td) {
   if (!/^\d{1,3}$/.test(f.trail)) return 'Preencha a trilha com um número.';
   if (!String(f.disc).trim()) return 'Preencha a disciplina.';
-  if (!/^\d{1,3}$/.test(f.aula)) return 'Preencha a aula com um número.';
+  if (f.aula !== '' && !/^\d{1,3}$/.test(f.aula)) return 'A aula deve ser um número. Deixe vazio se a tarefa não for de uma aula.';
+  if (String(f.obs || '').length > 200) return 'A observação pode ter até 200 caracteres.';
   const dates = [f.d0, ...f.rv];
   for (const d of dates) {
     if (!d) continue;
@@ -785,10 +801,16 @@ function validateTask(f, td) {
   if (f.hit > f.ex) return 'Os acertos não podem passar da quantidade de exercícios.';
   return '';
 }
-const cleanTask = f => ({ trail: String(f.trail).padStart(2, '0'), disc: String(f.disc).trim().replace(/\s+/g, ' '), aula: String(f.aula).padStart(2, '0'), d0: f.d0 || '', rv: [0, 1, 2].map(k => f.rv[k] || ''), ex: f.ex, hit: f.hit });
+const cleanTask = f => ({ trail: String(f.trail).padStart(2, '0'), disc: String(f.disc).trim().replace(/\s+/g, ' '), aula: f.aula === '' ? '' : String(f.aula).padStart(2, '0'), obs: String(f.obs || '').trim().replace(/\s+/g, ' ').slice(0, 200), d0: f.d0 || '', rv: [0, 1, 2].map(k => f.rv[k] || ''), ex: f.ex, hit: f.hit });
 function addTask(f) { const t = { ...cleanTask(f), n: nextTaskN(), id: newId() }; S.tasks.push(t); save(); return t; }
 function updateTask(id, f) { const i = S.tasks.findIndex(x => x.id === id); if (i < 0) return null; S.tasks[i] = { ...cleanTask(f), n: S.tasks[i].n, id }; save(); return S.tasks[i]; }
 // Apaga só a planilha de estudos. Nenhum outro botão (nem 'Redefinir tudo') mexe nas tarefas.
+function reorderTasks(ids) { // nova ordem (ids na ordem de exibição); os números 1, 2, 3... acompanham a posição
+  const m = new Map(S.tasks.map(t => [String(t.id), t])), out = [];
+  ids.forEach(id => { const t = m.get(String(id)); if (t) { out.push(t); m.delete(String(id)); } });
+  sortedTasks().filter(t => m.has(String(t.id))).forEach(t => out.push(t));
+  out.forEach((t, i) => { t.n = i + 1; }); S.tasks = out; save();
+}
 function deleteAllTasks() { S.tasks = []; save(); }
 function deleteTask(id) { S.tasks = normTasks(S.tasks.filter(x => x.id !== id)); save(); }
 function setTaskDate(id, k, val, td) { // k 0 = execução, 1..3 = revisões; devolve texto de erro ou ''
@@ -1016,7 +1038,7 @@ function sanTask(x) {
   const rv = Array.isArray(x.rv) ? x.rv : ['', '', ''], d0 = x.d0 === undefined || x.d0 === null ? '' : x.d0;
   const ex = x.ex === undefined ? 0 : x.ex, hit = x.hit === undefined ? 0 : x.hit;
   if ((d0 !== '' && !okDate(d0)) || rv.length > 3 || !rv.every(d => d === '' || d === null || okDate(d)) || !okInt(ex, 0, 1e6) || !okInt(hit, 0, 1e6)) return null;
-  return { id: String(x.id), n: x.n === undefined ? 1 : x.n, trail: capStr(x.trail, 20), aula: capStr(x.aula, 20), disc: capStr(x.disc, 200), d0, rv: [0, 1, 2].map(k => rv[k] || ''), ex, hit };
+  return { id: String(x.id), n: x.n === undefined ? 1 : x.n, trail: capStr(x.trail, 20), aula: capStr(x.aula, 20), obs: capStr(x.obs, 200), disc: capStr(x.disc, 200), d0, rv: [0, 1, 2].map(k => rv[k] || ''), ex, hit };
 }
 function sanTimer(x) {
   if (!isRec(x) || !okNum(x.startTs, 0, 1e15) || !okNum(x.acc, 0, 1e10)) return null;
@@ -1130,7 +1152,7 @@ function toast(msg) {
 let SK = 0, skSet = false;
 const tnow = () => Date.now() + SK;
 const elapsed = () => S.timer.acc + (S.timer.running ? Math.max(0, tnow() - S.timer.startTs) : 0);
-function timerStart(at) { if (S.timer.running) return; S.timer.running = true; S.timer.startTs = at || tnow(); save(); tick(); if (!at) tnAsk(); }
+function timerStart() { if (S.timer.running) return; S.timer.running = true; S.timer.startTs = tnow(); save(); tick(); ntAsk(); }
 // O tempo do cronômetro é repartido pelos dias: o que passou da meia-noite conta para o dia seguinte.
 function timerSegs(t0, t1, into) {
   while (t0 < t1) {
@@ -1146,11 +1168,11 @@ function timerDays() { // { 'AAAA-MM-DD': ms } com o que já foi pausado + o tre
   if (T.running) timerSegs(T.startTs, Math.max(T.startTs, tnow()), out);
   return out;
 }
-function timerPause(at) {
+function timerPause() {
   if (!S.timer.running) return;
   const T = S.timer, days = { ...(T.days || {}) }, sum = Object.values(days).reduce((a, b) => a + b, 0), legacy = Math.max(0, (T.acc || 0) - sum);
   if (legacy > 0) days[today()] = (days[today()] || 0) + legacy;
-  timerSegs(T.startTs, Math.max(T.startTs, at || tnow()), days);
+  timerSegs(T.startTs, Math.max(T.startTs, tnow()), days);
   T.days = days; T.acc = Object.values(days).reduce((a, b) => a + b, 0); T.running = false; save(); tick();
 }
 function timerReset() { S.timer = { running: false, startTs: 0, acc: 0, days: {} }; }
@@ -1448,10 +1470,10 @@ function viewPlan() {
   const over = all.reduce((n, t) => n + st(t).filter(x => x === 'over').length, 0);
   const ex = all.reduce((n, t) => n + t.ex, 0), hit = all.reduce((n, t) => n + t.hit, 0), perf = ex ? Math.round(hit / ex * 100) : null;
   const F = ui.planF;
-  const list = F === 'estudar' ? all.filter(t => !t.d0) : F === 'revisar' ? all.filter(t => st(t).some(x => x === 'due' || x === 'over')) : all;
+  const list = F === 'estudar' ? all.filter(t => !t.d0) : F === 'estudadas' ? all.filter(t => t.d0) : F === 'revisar' ? all.filter(t => st(t).some(x => x === 'due' || x === 'over')) : all;
   const rows = list.map(t => {
     const p = taskPerf(t);
-    return `<tr><td class="mono">${pad(t.n)}</td><td class="mono">${esc(t.trail)}</td><td class="l">${esc(t.disc)}</td><td class="mono">${esc(t.aula)}</td>
+    return `<tr data-id="${esc(t.id)}"><td class="mono">${pad(t.n)}</td><td class="mono">${esc(t.trail)}</td><td class="l">${esc(t.disc)}${t.obs ? `<span class="obsln">${esc(t.obs)}</span>` : ''}</td><td class="mono">${t.aula ? esc(t.aula) : '<span class="tone-mut" title="Esta tarefa não é de uma aula">N/A</span>'}</td>
       <td>${planCell(t, 0)}</td><td>${planCell(t, 1)}</td><td>${planCell(t, 2)}</td><td>${planCell(t, 3)}</td>
       <td class="mono">${t.ex || '—'}</td><td class="mono">${t.ex ? t.hit : '—'}</td><td class="mono ${p === null ? 'tone-mut' : 'tone-' + perfTone(p, 1)}">${p === null ? '—' : pct(p)}</td>
       <td class="acts"><button class="btn sm" data-act="edittask" data-id="${t.id}">Editar</button><button class="btn sm ghost danger" data-act="deltask" data-id="${t.id}">Excluir</button></td></tr>`;
@@ -1460,21 +1482,23 @@ function viewPlan() {
   const head = '<tr><th>Tarefa</th><th>Trilha</th><th class="l">Disciplina</th><th>Aula</th><th>Data<br>Execução</th><th>Data Rev.<br>24h</th><th>Data Rev.<br>7D</th><th>Data Rev.<br>30D</th><th>Qtd.<br>Exercícios</th><th>Qtd.<br>acertos</th><th>Desem-<br>penho</th><th></th></tr>';
   return `<div class="pagehead"><div><p class="eyebrow">Planilha</p><h1>Planilha de estudos</h1></div><div class="row">${all.length ? '<button class="btn ghost danger" data-act="deltasks" data-label="Excluir tudo">Excluir tudo</button>' : ''}<button class="btn start" data-act="newtask">Nova tarefa</button></div></div>
   ${all.length ? `<div class="stats4">${stat('A estudar', toStudy, toStudy ? 'acc' : '')}${stat('Revisões hoje', due, due ? 'acc' : '')}${stat('Revisões atrasadas', over, over ? 'bad' : '')}${stat('Desempenho', perf === null ? '—' : pct(perf), perf === null ? 'mut' : perfTone(perf, 1))}</div>
-  <div class="row">${chip('all', 'Todas')}${chip('estudar', 'A estudar')}${chip('revisar', 'Revisar agora')}</div>
-  ${list.length ? `<div class="tblwrap"><table class="plan"><thead>${head}</thead><tbody>${rows}</tbody></table></div>
-  <div class="legend small muted"><span><i class="sw ok"></i>No prazo</span><span><i class="sw late"></i>Feita atrasada</span><span><i class="sw over"></i>Atrasada</span><span><i class="sw due"></i>Hoje</span><span><i class="sw"></i>Ainda não chegou</span></div>` : '<div class="card empty"><p><b>Nada por aqui.</b></p><p class="small muted">Nenhuma tarefa neste filtro.</p></div>'}`
+  <div class="row">${chip('all', 'Todas')}${chip('estudadas', 'Estudadas')}${chip('estudar', 'A estudar')}${chip('revisar', 'Revisar agora')}</div>
+  ${list.length ? `<div class="tblwrap"><table class="plan"><thead>${head}</thead><tbody ${F === 'all' ? 'class="drg" data-sort="tasks"' : ''}>${rows}</tbody></table></div>
+` : '<div class="card empty"><p><b>Nada por aqui.</b></p><p class="small muted">Nenhuma tarefa neste filtro.</p></div>'}`
   : '<div class="card empty"><p><b>Nenhuma tarefa ainda.</b></p><p class="small muted">Cadastre as aulas que você vai estudar. As revisões de 24h, 7 e 30 dias são calculadas a partir da data de execução.</p><button class="btn start" data-act="newtask">Criar a primeira tarefa</button></div>'}`;
 }
 function taskModal(t) {
   const isNew = !t, td = today();
-  const v = t || { n: nextTaskN(), trail: '', disc: '', aula: '', d0: '', rv: ['', '', ''], ex: 0, hit: 0 };
+  const v = t || { n: nextTaskN(), trail: '', disc: '', aula: '', obs: '', d0: '', rv: ['', '', ''], ex: 0, hit: 0 };
   const discs = [...new Set(S.tasks.map(x => x.disc))];
   const dt = (id, val, lab) => `<div class="field"><label class="label" for="${id}">${lab}</label><input type="date" id="${id}" value="${val}" min="2000-01-01" max="${td}"><span class="small muted" id="${id}h"></span></div>`;
   openModal(`<div><p class="eyebrow">${isNew ? 'Nova tarefa' : 'Editar tarefa'}</p><h2 style="font-size:1.25rem;margin-top:4px">Tarefa ${pad(v.n)}</h2></div>
   <form id="taskForm" data-id="${t ? t.id : ''}" class="stack">
     <div class="pair"><div class="field"><label class="label" for="tTrail">Trilha</label><input class="tx" type="text" id="tTrail" inputmode="numeric" maxlength="3" autocomplete="off" value="${esc(v.trail)}" placeholder="00"></div>
-      <div class="field"><label class="label" for="tAula">Aula</label><input class="tx" type="text" id="tAula" inputmode="numeric" maxlength="3" autocomplete="off" value="${esc(v.aula)}" placeholder="00"></div></div>
+      <div class="field"><label class="label" for="tAula">Aula</label><input class="tx" type="text" id="tAula" inputmode="numeric" maxlength="3" autocomplete="off" value="${esc(v.aula)}" placeholder="N/A"></div></div>
+    <p class="small muted" style="margin-top:-6px">Deixe a aula vazia quando a tarefa não for de uma aula, como uma bateria de exercícios. Ela aparece como N/A.</p>
     <div class="field"><label class="label" for="tDisc">Disciplina</label><input class="tx" type="text" id="tDisc" list="discs" maxlength="60" autocomplete="off" value="${esc(v.disc)}"><datalist id="discs">${discs.map(d => `<option value="${esc(d)}">`).join('')}</datalist></div>
+    <div class="field"><label class="label" for="tObs">Observações <span class="muted">(opcional)</span></label><input class="tx" type="text" id="tObs" maxlength="200" autocomplete="off" value="${esc(v.obs || '')}" placeholder="ex.: refazer as questões que errei"></div>
     <div class="pair">${dt('tD0', v.d0, 'Data de execução')}${dt('tR1', v.rv[0], 'Revisão de 24h')}</div>
     <div class="pair">${dt('tR2', v.rv[1], 'Revisão de 7 dias')}${dt('tR3', v.rv[2], 'Revisão de 30 dias')}</div>
     <div class="pair"><div class="field"><label class="label" for="tEx">Qtd. de exercícios</label><input type="number" id="tEx" min="0" value="${v.ex || ''}"></div>
@@ -1489,7 +1513,7 @@ function taskHints() {
 }
 function readTask() {
   const n = s => { const x = $(s).value.trim(); return x === '' ? 0 : /^\d+$/.test(x) ? +x : NaN; };
-  return { trail: $('#tTrail').value.trim(), disc: $('#tDisc').value, aula: $('#tAula').value.trim(), d0: $('#tD0').value, rv: [$('#tR1').value, $('#tR2').value, $('#tR3').value], ex: n('#tEx'), hit: n('#tHit') };
+  return { trail: $('#tTrail').value.trim(), disc: $('#tDisc').value, aula: $('#tAula').value.trim(), obs: $('#tObs').value, d0: $('#tD0').value, rv: [$('#tR1').value, $('#tR2').value, $('#tR3').value], ex: n('#tEx'), hit: n('#tHit') };
 }
 function saveTask() {
   const id = $('#taskForm').dataset.id, f = readTask(), err = validateTask(f, today());
@@ -1500,7 +1524,7 @@ function saveTask() {
 function cellModal(id, k) {
   const t = S.tasks.find(x => x.id === id); if (!t) return;
   const cur = k === 0 ? t.d0 : t.rv[k - 1], exp = k ? taskExp(t, k - 1) : null;
-  openModal(`<div><p class="eyebrow">${esc(t.disc)} · trilha ${esc(t.trail)} · aula ${esc(t.aula)}</p><h2 style="font-size:1.25rem;margin-top:4px">${k === 0 ? 'Data de execução' : 'Revisão de ' + REV[k - 1][1]}</h2></div>
+  openModal(`<div><p class="eyebrow">${esc(t.disc)} · trilha ${esc(t.trail)}${t.aula ? ' · aula ' + esc(t.aula) : ''}</p><h2 style="font-size:1.25rem;margin-top:4px">${k === 0 ? 'Data de execução' : 'Revisão de ' + REV[k - 1][1]}</h2></div>
   <form id="cellForm" data-id="${id}" data-k="${k}" class="stack">
     <div class="field"><label class="label" for="cDate">${k === 0 ? 'Dia em que você estudou' : 'Dia em que você revisou'}</label><input type="date" id="cDate" value="${cur || today()}" min="2000-01-01" max="${today()}"></div>
     ${exp ? `<p class="small muted">Previsto para ${fmtBR(exp)}.</p>` : ''}
@@ -1701,7 +1725,7 @@ function render() {
   if (ui.view === 'dia' && (!ui.day || ui.day === today())) ui.view = ui.day ? 'hoje' : (ui.dayFrom || 'cal');
   navTrack();
   $('#nav').innerHTML = NAV.map(([k, n, sh]) => `<button data-act="nav" data-v="${k}" ${(ui.view === 'dia' ? (ui.dayFrom || 'cal') : ui.view) === k ? 'aria-current="page"' : ''}><svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg><span class="lf">${n}</span><span class="ls">${sh || n}</span>${k === 'conta' && auth.session ? (CLOUD ? `<i class="sdot ${cloud.status}" title="${esc(SYNC_TXT[cloud.status] || 'Conectado')}"></i>` : '<i class="on" title="Conectado"></i>') : ''}</button>`).join('');
-  $('#view').innerHTML = `<div class="view">${VIEWS[ui.view]()}</div>`;
+  $('#view').innerHTML = `<div class="view${ui.view === 'plan' ? ' planpg' : ''}">${VIEWS[ui.view]()}</div>`;
   if (ui.view === 'hoje') tick();
   if (ui.view === 'rotina') rgInit();
 }
@@ -1999,7 +2023,7 @@ async function authRun() {
     const pw = $('#aPass'); if (pw) pw.focus();
   }
 }
-async function authOut() { tnClear(); if (CLOUD && cloud.on) { try { await Promise.race([cloudSync(), new Promise(r => setTimeout(r, 2500))]); } catch (e) {} } cloudStop(); bio.tried = true; /* saiu de propósito: não pede a digital sozinho */ auth.session = null; auth.sub = null; auth.tab = 'in'; authSave(); closeModal(); switchData(); toast('Você saiu da conta.'); }
+async function authOut() { try { navigator.serviceWorker.getRegistration().then(r => r && r.getNotifications({ tag: 'tt-timer' }).then(l => l.forEach(n => n.close()))); } catch (e) {} if (CLOUD && cloud.on) { try { await Promise.race([cloudSync(), new Promise(r => setTimeout(r, 2500))]); } catch (e) {} } cloudStop(); bio.tried = true; /* saiu de propósito: não pede a digital sozinho */ auth.session = null; auth.sub = null; auth.tab = 'in'; authSave(); closeModal(); switchData(); toast('Você saiu da conta.'); }
 document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.closest && e.target.closest('#authForm')) { e.preventDefault(); authGo(); } });
 document.addEventListener('keydown', e => { // Enter no nome da atividade = "Adicionar atividade"
   if (e.key === 'Enter' && e.target.classList && e.target.classList.contains('ra') && e.target.closest('#rrows')) { e.preventDefault(); e.target.value = capAct(e.target.value); const nx = e.target.closest('.rrow').nextElementSibling; if (nx && nx.classList.contains('rrow')) { nx.querySelector('.rh').focus(); nx.scrollIntoView({ block: 'nearest' }); } else addRrow(); }
@@ -2154,14 +2178,20 @@ function dataModal() {
 // ---------- arrastar os cards de metas e rotinas para mudar a ordem ----------
 let drag = null, suppressClickUntil = 0;
 document.addEventListener('click', e => { if (Date.now() < suppressClickUntil) { e.stopPropagation(); e.preventDefault(); } }, true);
-document.addEventListener('contextmenu', e => { if (drag && e.target.closest && e.target.closest('.rcard')) e.preventDefault(); });
+document.addEventListener('contextmenu', e => { if (drag && e.target.closest && e.target.closest('.rcard, tr[data-id]')) e.preventDefault(); });
 document.addEventListener('touchmove', e => { if (drag && drag.on) e.preventDefault(); }, { passive: false });
 function dragScroller(el) { for (let n = el; n && n !== document.body; n = n.parentElement) { const o = getComputedStyle(n).overflowY; if ((o === 'auto' || o === 'scroll') && n.scrollHeight > n.clientHeight) return n; } return null; }
 function dragStart(e) {
   if (!drag || drag.on || !document.contains(drag.card)) return;
   const r = drag.card.getBoundingClientRect();
   drag.on = true; drag.ox = drag.x0 - r.left; drag.oy = drag.y0 - r.top; drag.px = drag.x0; drag.py = drag.y0;
-  const g = drag.card.cloneNode(true); g.classList.add('drag-ghost'); g.removeAttribute('data-act'); g.removeAttribute('tabindex');
+  let g;
+  if (drag.card.tagName === 'TR') { // linha de tabela: a cópia que acompanha o dedo é uma mini tabela com as mesmas larguras
+    g = document.createElement('table'); g.className = 'plan'; const tb = document.createElement('tbody'), tr = drag.card.cloneNode(true);
+    [...tr.children].forEach((c, i) => { const o = drag.card.children[i]; if (o) c.style.width = o.getBoundingClientRect().width + 'px'; });
+    tb.appendChild(tr); g.appendChild(tb); g.style.minWidth = '0'; g.style.background = 'var(--surface)'; g.style.borderRadius = '10px';
+  } else g = drag.card.cloneNode(true);
+  g.classList.add('drag-ghost'); g.removeAttribute('data-act'); g.removeAttribute('tabindex');
   g.style.width = r.width + 'px'; g.style.height = r.height + 'px'; g.style.left = r.left + 'px'; g.style.top = r.top + 'px'; document.body.appendChild(g);
   drag.ghost = g; drag.card.classList.add('dragging'); document.body.classList.add('dragging-cards');
   drag.scr = dragScroller(drag.grid);
@@ -2173,7 +2203,7 @@ function dragStart(e) {
 }
 function dragHover() {
   if (!drag || !drag.on) return;
-  const el = document.elementFromPoint(drag.px, drag.py), t = el && el.closest && el.closest('.rcard');
+  const el = document.elementFromPoint(drag.px, drag.py), t = el && el.closest && el.closest('.rcard, tr[data-id]');
   if (!t || t === drag.card || t.parentElement !== drag.grid) return;
   if (drag.card.compareDocumentPosition(t) & Node.DOCUMENT_POSITION_FOLLOWING) drag.grid.insertBefore(drag.card, t.nextSibling); else drag.grid.insertBefore(drag.card, t);
 }
@@ -2183,12 +2213,12 @@ function dragEnd(commit) {
   if (!d.on) return;
   if (d.ghost) d.ghost.remove(); d.card.classList.remove('dragging'); document.body.classList.remove('dragging-cards');
   suppressClickUntil = Date.now() + 350;
-  if (commit && document.contains(d.card)) setOrder(d.grid.dataset.sort, [...d.grid.children].filter(c => c.dataset && c.dataset.id).map(c => c.dataset.id));
+  if (commit && document.contains(d.card)) { const ids = [...d.grid.children].filter(c => c.dataset && c.dataset.id).map(c => c.dataset.id); if (d.grid.dataset.sort === 'tasks') reorderTasks(ids); else setOrder(d.grid.dataset.sort, ids); }
   render();
 }
 document.addEventListener('pointerdown', e => {
   if (e.button > 0 || drag) return;
-  const card = e.target.closest && e.target.closest('.rgrid[data-sort] > .rcard'); if (!card || e.target.closest('button')) return;
+  const card = e.target.closest && e.target.closest('.rgrid[data-sort] > .rcard, tbody.drg[data-sort] > tr'); if (!card || e.target.closest('button')) return;
   drag = { card, grid: card.parentElement, x0: e.clientX, y0: e.clientY, id: e.pointerId, touch: e.pointerType !== 'mouse', on: false, timer: null };
   if (drag.touch) drag.timer = setTimeout(() => dragStart(), 380);
 });
@@ -2648,63 +2678,7 @@ async function cloudSignup(email, pass, nome) {
 }
 
 // No programa local, fechar a janela pausa o cronômetro para não contar o tempo em que o programa ficou fechado.
-// ---- cronômetro fora da tela: notificação no celular (via service worker) e miniatura no Windows ----
-// O service worker não enxerga o localStorage; por isso o estado do cronômetro é espelhado no IndexedDB, e o que for feito pela notificação
-// (pausar, continuar, zerar) fica numa fila ("ops") que o app aplica assim que abre ou volta para a tela.
-const TN_OK = () => typeof Notification !== 'undefined' && typeof indexedDB !== 'undefined' && 'serviceWorker' in navigator && /^https?:/.test(location.protocol) && !window.ttStore;
-function tnTx(fn) { // fn(registro) -> { rec: novo registro (opcional), out: resultado }; leitura e escrita na mesma transação
-  return new Promise((res, rej) => {
-    const q = indexedDB.open('tt-notif', 1);
-    q.onupgradeneeded = () => q.result.createObjectStore('kv');
-    q.onerror = () => rej(q.error);
-    q.onsuccess = () => {
-      const db = q.result, tx = db.transaction('kv', 'readwrite'), st = tx.objectStore('kv'), g = st.get('timer'); let out;
-      g.onsuccess = () => { const r = fn(g.result || null) || {}; if (r.rec) st.put(r.rec, 'timer'); out = r.out; };
-      tx.oncomplete = () => { db.close(); res(out); };
-      tx.onerror = tx.onabort = () => { db.close(); rej(tx.error); };
-    };
-  });
-}
-function tnSnap() { const T = S.timer; return { u: curUser, s: { running: !!T.running, startTs: T.startTs, acc: T.acc }, raw: Math.round(info(today()).raw * 1000), sk: SK }; }
-let tnT = 0;
-function tnWrite() { return tnTx(r => ({ rec: { ...tnSnap(), ops: r && r.u === curUser && Array.isArray(r.ops) ? r.ops : [] } })); } // guarda a fila de ops que o service worker tenha acabado de colocar
-function tnMirror() { if (!TN_OK() || !curUser || !auth.session) return; clearTimeout(tnT); tnT = setTimeout(() => { tnWrite().catch(() => {}); }, 250); }
-function tnAsk() { try { if (TN_OK() && Notification.permission === 'default') Notification.requestPermission(); } catch (e) {} }
-let tnBusy = false;
-async function tnAdopt() { // aplica o que foi feito pela notificação
-  if (!TN_OK() || !curUser || !auth.session || tnBusy) return; tnBusy = true;
-  try {
-    const ops = await tnTx(r => (!r || r.u !== curUser || !Array.isArray(r.ops) || !r.ops.length) ? { out: [] } : { rec: { ...r, ops: [] }, out: r.ops });
-    if (!ops.length) return;
-    for (const o of ops) {
-      if (!o || !okNum(o.at, 0, 1e15)) continue;
-      if (o.op === 'pause') timerPause(o.at); else if (o.op === 'play') timerStart(o.at); else if (o.op === 'reset') resetTimerNow(true);
-    }
-    save(); tick(); if (!$('#modal').innerHTML) render(); tnMirror();
-  } catch (e) {} finally { tnBusy = false; }
-}
-async function tnVis() {
-  if (!TN_OK() || !curUser || !auth.session) return;
-  try {
-    const reg = await navigator.serviceWorker.getRegistration(); if (!reg) return;
-    if (document.visibilityState === 'visible') { await tnAdopt(); (await reg.getNotifications({ tag: 'tt-timer' })).forEach(n => n.close()); return; }
-    if (S.timer.running && Notification.permission === 'granted') { await tnWrite(); const w = reg.active || navigator.serviceWorker.controller; if (w) w.postMessage({ tt: 'show' }); }
-  } catch (e) {}
-}
-let tnL = 0;
-function tnLive() { // com o app fora da tela e o cronômetro rodando, pede ao service worker para atualizar o número da notificação
-  if (document.visibilityState !== 'hidden' || !S.timer.running || !TN_OK() || !curUser || !auth.session || Notification.permission !== 'granted') return;
-  const n = Date.now(); if (n - tnL < 1000) return; tnL = n;
-  const w = navigator.serviceWorker.controller; if (w) w.postMessage({ tt: 'show' });
-}
-async function tnClear() { try { await tnTx(() => ({ rec: { u: null, s: { running: false, startTs: 0, acc: 0 }, raw: 0, sk: 0, ops: [] } })); const reg = await navigator.serviceWorker.getRegistration(); if (reg) (await reg.getNotifications({ tag: 'tt-timer' })).forEach(n => n.close()); } catch (e) {} }
-if (typeof window !== 'undefined') {
-  document.addEventListener('visibilitychange', tnVis);
-  addEventListener('pageshow', () => { if (document.visibilityState === 'visible') tnVis(); });
-  addEventListener('focus', () => tnAdopt());
-  if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', e => { if (e.data && e.data.tt === 'ops') tnAdopt(); });
-  setInterval(() => { if (document.visibilityState === 'visible') tnAdopt(); }, 3000);
-}
+// ---- miniaturas do cronômetro ----
 // miniatura do programa do Windows: manda o estado do cronômetro para a janelinha
 let miniLast = { run: null, t: 0, v: 0 };
 function miniPush() {
@@ -2713,6 +2687,23 @@ function miniPush() {
   if (run === miniLast.run && now - miniLast.t < 4000 && (run || Math.abs(v - miniLast.v) < 1000)) return;
   miniLast = { run, t: now, v }; try { window.ttStore.mini({ run, ms: v }); } catch (e) {}
 }
+// ---- aviso "cronômetro em execução" (celular): uma notificação simples, sem botões e sem tempo; tocar nela abre o app ----
+const NT_OK = () => !window.ttStore && typeof Notification !== 'undefined' && 'serviceWorker' in navigator && /^https?:/.test(location.protocol);
+function ntAsk() { try { if (NT_OK() && Notification.permission === 'default') Notification.requestPermission(); } catch (e) {} }
+async function ntSync() { // aparece só com o app fora da tela e o cronômetro rodando; some quando o app volta ou o cronômetro para
+  if (!NT_OK() || !curUser || !auth.session) return;
+  try {
+    const reg = await navigator.serviceWorker.getRegistration(); if (!reg) return;
+    const want = document.visibilityState === 'hidden' && !!S.timer.running && Notification.permission === 'granted';
+    const cur = await reg.getNotifications({ tag: 'tt-timer' });
+    if (want && !cur.length) await reg.showNotification('TimeTracker em execução', { tag: 'tt-timer', body: 'O cronômetro está rodando. Toque para abrir o app.', icon: 'icon-192.png', silent: true });
+    else if (!want) cur.forEach(n => n.close());
+  } catch (e) {}
+}
+if (typeof window !== 'undefined') {
+  document.addEventListener('visibilitychange', ntSync);
+  addEventListener('pageshow', ntSync);
+}
 if (window.ttStore) addEventListener('pagehide', () => { if (S.timer.running) timerPause(); });
 if ('serviceWorker' in navigator && /^https?:/.test(location.protocol) && window.TT_CLOUD) navigator.serviceWorker.register('sw.js').catch(() => {});
 rollover();
@@ -2720,7 +2711,7 @@ authInit(); bioDetect();
 render();
 setInterval(() => {
   if (today() !== curDay) { curDay = today(); rollover(); render(); return; }
-  tick(); miniPush(); tnLive();
+  tick(); miniPush();
 }, 250);
 </script>
 
