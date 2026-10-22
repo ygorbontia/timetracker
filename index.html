@@ -1,4 +1,4 @@
-<!doctype html><html lang="pt-BR"><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-UXeeAUO8sqMXPcdYTzklqYuFpzKJgyBr128Bo8tCsZ8=' 'sha256-xTBft4v/ACqGj6x8W5byKzPjltCSZEu5/fIf4A7IoCA='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://*.supabase.co; frame-src 'none'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><style>html{color-scheme:dark}body{margin:0;touch-action:manipulation}[hidden]{display:none!important}</style>
+<!doctype html><html lang="pt-BR"><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-UXeeAUO8sqMXPcdYTzklqYuFpzKJgyBr128Bo8tCsZ8=' 'sha256-wH/5fED2xJo6BE48ts1omJWFiUqH+2ivAn3PBPAsm7E='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://*.supabase.co; frame-src 'none'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><style>html{color-scheme:dark}body{margin:0;touch-action:manipulation}[hidden]{display:none!important}</style>
 <title>TimeTracker & Study Planner</title>
 
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -1717,7 +1717,11 @@ function viewDia() {
 }
 
 const VIEWS = { hoje: viewHoje, semana: viewSemana, mes: viewMes, cal: viewCal, dia: viewDia, plan: viewPlan, metas: viewMetas, rotina: viewRotina, desemp: viewDesemp };
+// F5 / recarregar: volta para o mesmo menu em que você estava (guardado só nesta janela, some ao fechar o app)
+try { let v = null; try { v = sessionStorage.getItem('tt.view'); } catch (e) {} if (!v) { const m = /^#v=([a-z]+)$/.exec(location.hash); if (m) v = m[1]; } if (v && v !== 'dia' && VIEWS[v]) ui.view = v; } catch (e) {}
 function render() {
+  try { sessionStorage.setItem('tt.view', ui.view); } catch (e) {}
+  try { const h = ui.view === 'dia' ? '' : '#v=' + ui.view; if (location.hash !== h) history.replaceState(null, '', location.pathname + location.search + h); } catch (e) {}
   const out = !auth.session, g = $('#gate');
   document.querySelector('.shell').hidden = out; g.hidden = !out;
   if (out) { if (!g.firstChild) accountModal(); return; }
