@@ -1,4 +1,4 @@
-<!doctype html><html lang="pt-BR"><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-UXeeAUO8sqMXPcdYTzklqYuFpzKJgyBr128Bo8tCsZ8=' 'sha256-wH/5fED2xJo6BE48ts1omJWFiUqH+2ivAn3PBPAsm7E='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://*.supabase.co; frame-src 'none'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><style>html{color-scheme:dark}body{margin:0;touch-action:manipulation}[hidden]{display:none!important}</style>
+<!doctype html><html lang="pt-BR"><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-UXeeAUO8sqMXPcdYTzklqYuFpzKJgyBr128Bo8tCsZ8=' 'sha256-FwcIfwO5aZcD0hYPE6RuKOoMItSCj/YjZXMZFpaBTiE='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://*.supabase.co; frame-src 'none'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><style>html{color-scheme:dark}body{margin:0;touch-action:manipulation}[hidden]{display:none!important}</style>
 <title>TimeTracker & Study Planner</title>
 
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -434,6 +434,14 @@ button.pc:hover { border-color: var(--accent); }
 .cell { min-height: 78px; display: flex; flex-direction: column; justify-content: space-between; gap: 4px; padding: 7px 8px; text-align: left; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); transition: border-color .15s, box-shadow .15s, transform .1s; min-width: 0; overflow: hidden; }
 .cell:hover { border-color: var(--accent); box-shadow: 0 0 16px -6px var(--accent); }
 .cell.blank { visibility: hidden; pointer-events: none; }
+.dta-card { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 18px; }
+.dta-left { display: flex; flex-direction: column; align-items: flex-start; min-width: 92px; }
+.dta-num { font-family: var(--font-mono); font-size: 2rem; font-weight: 700; line-height: 1.1; color: var(--accent-fg); font-variant-numeric: tabular-nums; }
+.dta-card.past .dta-num { color: var(--muted); }
+.dta-mid { flex: 1 1 160px; min-width: 0; }
+.dta-name { font-weight: 700; font-size: 1.05rem; overflow-wrap: anywhere; }
+.cell.is-target { border-color: var(--warn); box-shadow: inset 0 0 0 1px var(--warn); }
+.dta-flag { width: 9px; height: 9px; background: var(--warn); transform: rotate(45deg); border-radius: 2px; margin-left: auto; margin-right: 6px; flex: none; }
 .cell.is-today { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .cell .n { font-family: var(--font-mono); font-size: 0.85rem; font-weight: 700; display: flex; justify-content: space-between; align-items: center; }
 .cell .dot { width: 8px; height: 8px; border-radius: 50%; }
@@ -544,12 +552,12 @@ const pct = p => `${Math.round(p)}%`;
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 let storageOK = true;
-const blank = () => ({ sessions: {}, goals: [], tasks: [], routines: [], rdays: {}, timer: { running: false, startTs: 0, acc: 0, days: {} }, closed: null });
+const blank = () => ({ sessions: {}, goals: [], tasks: [], routines: [], rdays: {}, timer: { running: false, startTs: 0, acc: 0, days: {} }, closed: null, target: null });
 const store = () => (typeof window !== 'undefined' && window.ttStore) || null;
 function load() {
   try {
     const r = curUser ? localStorage.getItem(dataKey()) : null;
-    if (r) { const o = JSON.parse(r); return { sessions: o.sessions || {}, goals: o.goals || [], tasks: normTasks(o.tasks), routines: Array.isArray(o.routines) ? o.routines : [], rdays: o.rdays && typeof o.rdays === 'object' ? o.rdays : {}, timer: o.timer || blank().timer, closed: o.closed || null }; }
+    if (r) { const o = JSON.parse(r); return { sessions: o.sessions || {}, goals: o.goals || [], tasks: normTasks(o.tasks), routines: Array.isArray(o.routines) ? o.routines : [], rdays: o.rdays && typeof o.rdays === 'object' ? o.rdays : {}, timer: o.timer || blank().timer, closed: o.closed || null, target: o.target || null }; } // a data-alvo é conferida logo depois (sanTarget ainda não pode ser usada nesta hora)
   } catch (e) { storageOK = false; }
   return blank();
 }
@@ -1040,6 +1048,12 @@ function sanTask(x) {
   if ((d0 !== '' && !okDate(d0)) || rv.length > 3 || !rv.every(d => d === '' || d === null || okDate(d)) || !okInt(ex, 0, 1e6) || !okInt(hit, 0, 1e6)) return null;
   return { id: String(x.id), n: x.n === undefined ? 1 : x.n, trail: capStr(x.trail, 20), aula: capStr(x.aula, 20), obs: capStr(x.obs, 200), disc: capStr(x.disc, 200), d0, rv: [0, 1, 2].map(k => rv[k] || ''), ex, hit };
 }
+function sanTarget(x) { // data-alvo (ex.: dia da prova): { name, date }
+  if (!isRec(x) || !okDate(x.date)) return null;
+  const name = typeof x.name === 'string' ? x.name.trim().replace(/\s+/g, ' ').slice(0, 60) : '';
+  return { name: name || 'Prova', date: x.date };
+}
+try { S.target = sanTarget(S.target); } catch (e) { S.target = null; }
 function sanTimer(x) {
   if (!isRec(x) || !okNum(x.startTs, 0, 1e15) || !okNum(x.acc, 0, 1e10)) return null;
   const days = {}; if (isRec(x.days)) for (const k of Object.keys(x.days).slice(0, 400)) if (okDate(k) && okNum(x.days[k], 0, 1e10)) days[k] = x.days[k];
@@ -1051,7 +1065,7 @@ function dayMap(r, fn) { const o = {}; if (isRec(r)) for (const k of Object.keys
 function listOf(a, fn, max) { const seen = new Set(), out = []; if (Array.isArray(a)) for (const x of a.slice(0, max)) { const v = fn(x); if (v && !seen.has(v.id)) { seen.add(v.id); out.push(v); } } return out; }
 function normData(o) { // só os campos conhecidos, no formato certo (o cronômetro não entra: fica o que está rodando agora)
   o = isRec(o) ? o : {};
-  return { sessions: dayMap(o.sessions, sanSession), goals: listOf(o.goals, sanGoal, MAXN.goals), tasks: normTasks(listOf(o.tasks, sanTask, MAXN.tasks)), routines: listOf(o.routines, sanRoutine, MAXN.routines), rdays: dayMap(o.rdays, sanRday), closed: okDate(o.closed) ? o.closed : null };
+  return { sessions: dayMap(o.sessions, sanSession), goals: listOf(o.goals, sanGoal, MAXN.goals), tasks: normTasks(listOf(o.tasks, sanTask, MAXN.tasks)), routines: listOf(o.routines, sanRoutine, MAXN.routines), rdays: dayMap(o.rdays, sanRday), closed: okDate(o.closed) ? o.closed : null, target: sanTarget(o.target) };
 }
 const backupCounts = d => ({ days: Object.keys(d.sessions).length, goals: d.goals.length, routines: d.routines.length, tasks: d.tasks.length });
 function backupMake(st, at) {
@@ -1320,6 +1334,32 @@ function viewMes() {
   <div class="grid-days">${ds.map(d => dayCard(info(d))).join('')}</div>`;
 }
 
+const dayNum = s => { const [y, m, d] = s.split('-').map(Number); return Math.round(Date.UTC(y, m - 1, d) / 864e5); };
+function targetLeft() { return S.target ? dayNum(S.target.date) - dayNum(today()) : null; }
+function targetBanner() {
+  const T = S.target;
+  if (!T) return '<section class="card dta-card"><div><p class="eyebrow">Data-alvo</p><p class="small muted">Marque o dia da sua prova (ou outro compromisso) e acompanhe quantos dias faltam.</p></div><button class="btn sm" data-act="targetmodal">Marcar data</button></section>';
+  const n = targetLeft(), [y, m, d] = T.date.split('-').map(Number), when = `${d} de ${MON[m - 1].toLowerCase()} de ${y}`;
+  const big = n > 1 ? String(n) : n === 1 ? '1' : n === 0 ? 'Hoje' : String(-n), small = n > 1 ? 'dias restantes' : n === 1 ? 'dia restante · é amanhã' : n === 0 ? 'é hoje!' : (n === -1 ? 'dia desde a data' : 'dias desde a data');
+  return `<section class="card dta-card ${n < 0 ? 'past' : ''}"><div class="dta-left"><span class="dta-num">${big}</span><span class="small muted">${small}</span></div>
+    <div class="dta-mid"><p class="eyebrow">Data-alvo</p><p class="dta-name">${esc(T.name)}</p><p class="small muted">${when}</p></div>
+    <div class="row"><button class="btn sm ghost" data-act="targetmodal">Editar</button><button class="btn sm ghost danger" data-act="deltarget">Remover</button></div></section>`;
+}
+function targetModal() {
+  const T = S.target, td = today();
+  openModal(`<div><p class="eyebrow">Data-alvo</p><h2 style="font-size:1.25rem;margin-top:4px">${T ? 'Editar data' : 'Marcar data'}</h2></div>
+  <form id="targetForm" class="stack">
+    <div class="field"><label class="label" for="gName">Nome</label><input class="tx" type="text" id="gName" maxlength="60" autocomplete="off" value="${esc(T ? T.name : '')}" placeholder="ex.: Prova da PF"></div>
+    <div class="field"><label class="label" for="gDate">Data</label><input type="date" id="gDate" value="${T ? T.date : ''}" min="${T && T.date < td ? T.date : td}" max="2100-12-31"></div>
+    <div class="foot"><button type="button" class="btn ghost" data-act="close">Cancelar</button><button type="button" class="btn start" data-act="savetarget">Salvar</button></div>
+  </form>`);
+}
+function saveTarget() {
+  const name = $('#gName').value, date = $('#gDate').value, td = today();
+  if (!okDate(date)) { toast('Escolha uma data válida.'); return; }
+  if (date < td && !(S.target && S.target.date === date)) { toast('A data precisa ser hoje ou depois.'); return; }
+  S.target = sanTarget({ name, date }); save(); closeModal(); toast('Data marcada.'); render();
+}
 function viewCal() {
   const first = new Date(ui.calY, ui.calM, 1), n = new Date(ui.calY, ui.calM + 1, 0).getDate(), t = today();
   let cells = WDs.map(w => `<div class="dow">${w}</div>`).join('');
@@ -1327,8 +1367,8 @@ function viewCal() {
   for (let d = 1; d <= n; d++) {
     const ds = ymd(new Date(ui.calY, ui.calM, d)), i = info(ds), has = i.goal > 0 || i.secs > 0;
     const dot = i.status === 'CONCLUIDO' ? 'var(--ok)' : i.status === 'NAO_ESTUDADO' ? 'var(--bad)' : (i.goal > 0 ? 'var(--warn)' : 'var(--line)');
-    cells += `<button class="cell ${ds === t ? 'is-today' : ''} ${i.future ? 'fut' : ''}" data-act="day" data-d="${ds}" aria-label="${d} de ${MON[ui.calM]}, ${labelOf(i.status)}">
-      <span class="n"><span>${d}</span><span class="dot" style="background:${dot}"></span></span>
+    cells += `<button class="cell ${ds === t ? 'is-today' : ''} ${i.future ? 'fut' : ''} ${S.target && S.target.date === ds ? 'is-target' : ''}" data-act="day" data-d="${ds}" aria-label="${d} de ${MON[ui.calM]}, ${labelOf(i.status)}${S.target && S.target.date === ds ? ', ' + esc(S.target.name) : ''}">
+      <span class="n"><span>${d}</span>${S.target && S.target.date === ds ? '<i class="dta-flag" title="' + esc(S.target.name) + '"></i>' : ''}<span class="dot" style="background:${dot}"></span></span>
       <span class="t">${has ? `${short(i.secs)} / ${short(i.goal)}` : '&nbsp;'}</span></button>`;
   }
   return `<div class="pagehead"><div><p class="eyebrow">Calendário</p><h1><span class="nw">${MON[ui.calM]}</span> <span class="nw">de ${ui.calY}</span></h1></div>
@@ -1337,6 +1377,7 @@ function viewCal() {
     <button class="btn sm ghost" data-act="cnow">Hoje</button>
     <button class="iconbtn" data-act="cnext" ${calAt(1) ? 'disabled' : ''} aria-label="Próximo mês"><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
     <button class="iconbtn" data-act="cynext" ${calAt(1) ? 'disabled' : ''} aria-label="Próximo ano"><svg viewBox="0 0 24 24"><path d="m13 6 6 6-6 6M5 6l6 6-6 6"/></svg></button></div></div>
+  ${targetBanner()}
   <section class="card"><div class="cal">${cells}</div>
   <div class="legend"><span><i style="background:var(--ok)"></i>Concluído</span><span><i style="background:var(--bad)"></i>Não estudado</span><span><i style="background:var(--warn)"></i>Pendente</span></div></section>
   <section class="card sect"><h2>Redefinir registros</h2>
@@ -2321,6 +2362,11 @@ document.addEventListener('click', e => {
     }
     case 'dayback': ui.view = ui.dayFrom || 'cal'; go(); break;
     case 'savedaynote': { const ds = b.dataset.d; ensure(ds).notes = $('#dnotes').value; save(); b.disabled = true; b.textContent = 'Salvo'; $('#dnoteSt').textContent = 'Alterações salvas!'; $('#dnoteSt').classList.add('ok'); break; }
+    case 'targetmodal': targetModal(); break;
+    case 'savetarget': saveTarget(); break;
+    case 'deltarget':
+      if (b.dataset.armed !== '1') { b.style.width = b.offsetWidth + 'px'; b.dataset.armed = '1'; b.textContent = 'Confirmar'; clearTimeout(b._t); b._t = setTimeout(() => { b.dataset.armed = ''; b.textContent = 'Remover'; b.style.width = ''; }, 3000); break; }
+      S.target = null; save(); toast('Data-alvo removida.'); render(); break;
     case 'newtask': taskModal(null); break;
     case 'edittask': { const t = S.tasks.find(x => x.id === b.dataset.id); if (t) taskModal(t); break; }
     case 'savetask': saveTask(); break;
@@ -2375,7 +2421,7 @@ document.addEventListener('click', e => {
       try {
         const o = JSON.parse($('#imp').value);
         if (!o || typeof o.sessions !== 'object' || !Array.isArray(o.goals)) throw 0;
-        S = { sessions: o.sessions, goals: o.goals, tasks: normTasks(o.tasks), routines: Array.isArray(o.routines) ? o.routines : [], rdays: o.rdays && typeof o.rdays === 'object' ? o.rdays : {}, timer: o.timer || blank().timer, closed: o.closed || null }; save(); rollover(); closeModal(); toast('Dados importados.'); render();
+        S = { sessions: o.sessions, goals: o.goals, tasks: normTasks(o.tasks), routines: Array.isArray(o.routines) ? o.routines : [], rdays: o.rdays && typeof o.rdays === 'object' ? o.rdays : {}, timer: o.timer || blank().timer, closed: o.closed || null, target: sanTarget(o.target) }; save(); rollover(); closeModal(); toast('Dados importados.'); render();
       } catch (er) { toast('Código inválido. Cole o backup completo.'); b.dataset.armed = ''; b.textContent = 'Importar e substituir'; }
     }
   }
@@ -2483,6 +2529,7 @@ function cloudRecs() {
   for (const d of Object.keys(S.rdays)) r['rdays/' + d] = S.rdays[d];
   for (const t of ['goals', 'tasks', 'routines']) S[t].forEach((x, i) => { if (x.id == null) x.id = newId(); r[t + '/' + x.id] = { ...x, _i: i }; });
   r['meta/timer'] = S.timer;
+  if (S.target) r['meta/target'] = S.target;
   return r;
 }
 const strip = v => { const o = { ...v }; delete o._i; return JSON.stringify(o); };
@@ -2551,10 +2598,10 @@ function cloudApply(rows) { // aplica o que veio da nuvem (a mais recente de cad
     else if (r.ts <= ls) continue; // o local é mais novo (ou igual): mantém
     const cut = k.indexOf('/'), top = cut > 0 ? k.slice(0, cut) : '', id = k.slice(cut + 1);
     // só chaves e conteúdos no formato esperado entram; o resto é ignorado (a nuvem nunca é confiável cegamente)
-    if (!((top === 'meta' && id === 'timer') || ((top === 'sessions' || top === 'rdays') && okDate(id)) || (SAN[top] && !['sessions', 'rdays'].includes(top) && ID_RE.test(id)))) continue;
+    if (!((top === 'meta' && (id === 'timer' || id === 'target')) || ((top === 'sessions' || top === 'rdays') && okDate(id)) || (SAN[top] && !['sessions', 'rdays'].includes(top) && ID_RE.test(id)))) continue;
     let val = null, pos = null;
     if (!r.dead) {
-      if (top === 'meta') val = sanTimer(r.v);
+      if (top === 'meta') val = id === 'target' ? sanTarget(r.v) : sanTimer(r.v);
       else if (top === 'sessions' || top === 'rdays') val = SAN[top](r.v);
       else if (isRec(r.v)) { const raw = { ...r.v }; pos = raw._i; delete raw._i; val = SAN[top](raw); if (val && val.id !== id) val = null; }
       if (!val) continue;
@@ -2563,7 +2610,8 @@ function cloudApply(rows) { // aplica o que veio da nuvem (a mais recente de cad
     if (top === 'sessions' || top === 'rdays') {
       if (r.dead) delete S[top][id]; else S[top][id] = val;
     } else if (top === 'meta') {
-      if (!r.dead) { S.timer = val; m.tver = val.ver || 0; m.tsig = JSON.stringify([val.running, val.startTs, val.acc, val.days]); }
+      if (id === 'target') S.target = r.dead ? null : val;
+      else if (!r.dead) { S.timer = val; m.tver = val.ver || 0; m.tsig = JSON.stringify([val.running, val.startTs, val.acc, val.days]); }
     } else {
       const a = S[top], i = a.findIndex(x => String(x.id) === id);
       if (r.dead) { if (i >= 0) a.splice(i, 1); }
@@ -2708,7 +2756,7 @@ if (typeof window !== 'undefined') {
   document.addEventListener('visibilitychange', ntSync);
   addEventListener('pageshow', ntSync);
 }
-if (window.ttStore) addEventListener('pagehide', () => { if (S.timer.running) timerPause(); });
+if (window.ttStore) addEventListener('pagehide', () => { if (S.timer.running && !window.__ttReload) timerPause(); }); // F5 (recarregar) não pausa; fechar o app pausa
 if ('serviceWorker' in navigator && /^https?:/.test(location.protocol) && window.TT_CLOUD) navigator.serviceWorker.register('sw.js').catch(() => {});
 rollover();
 authInit(); bioDetect();
