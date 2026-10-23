@@ -1,4 +1,4 @@
-<!doctype html><html lang="pt-BR"><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-UXeeAUO8sqMXPcdYTzklqYuFpzKJgyBr128Bo8tCsZ8=' 'sha256-FwcIfwO5aZcD0hYPE6RuKOoMItSCj/YjZXMZFpaBTiE='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://*.supabase.co; frame-src 'none'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><style>html{color-scheme:dark}body{margin:0;touch-action:manipulation}[hidden]{display:none!important}</style>
+<!doctype html><html lang="pt-BR"><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-UXeeAUO8sqMXPcdYTzklqYuFpzKJgyBr128Bo8tCsZ8=' 'sha256-gOQoaV2yPUP4JCOV6cQGIGunodAr4oaDWveb14p7MKM='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://*.supabase.co; frame-src 'none'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><style>html{color-scheme:dark}body{margin:0;touch-action:manipulation}[hidden]{display:none!important}</style>
 <title>TimeTracker & Study Planner</title>
 
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -1203,7 +1203,8 @@ function timerDone() {
   timerReset(); save();
   toast(multi ? `Sessão salva: ${clock(total * 1000)}, repartidas entre os dias.` : `Sessão salva: ${clock(total * 1000)} adicionadas ao dia.`); render();
 }
-function resetTimerNow(quiet) { const dd = timerDays(), keep = {}; for (const k of Object.keys(dd)) if (k !== today()) keep[k] = dd[k]; timerReset(); S.timer.days = keep; S.timer.acc = Object.values(keep).reduce((a, b) => a + b, 0); { const z = ensure(today()); z.secs = 0; z.status = 'PENDENTE'; } save(); if (!quiet) toast('Cronômetro zerado.'); render(); }
+function resetTimerNow(quiet) { timerReset(); { // zera tudo o que o cronômetro guardava, inclusive tempo de dias anteriores que ficou sem concluir
+     const z = ensure(today()); z.secs = 0; z.status = 'PENDENTE'; } save(); if (!quiet) toast('Cronômetro zerado.'); render(); }
 function tick() {
   const el = $('#clock'); if (!el) return;
   const ms = elapsed(), i = info(today());
@@ -1217,7 +1218,7 @@ function tick() {
   $('#stStudied').textContent = hm(live);
   const run = S.timer.running, tg = $('#bToggle');
   if (tg.dataset.run !== String(run)) { tg.dataset.run = String(run); tg.className = 'btn ' + (run ? 'pause' : 'start'); tg.innerHTML = run ? PAUSE_HTML : PLAY_HTML; }
-  $('#bDone').disabled = ms < 1000; $('#bReset').disabled = live < 1;
+  $('#bDone').disabled = ms < 1000; $('#bReset').disabled = i.raw + ms / 1000 < 1;
 }
 
 // ---------- telas ----------
